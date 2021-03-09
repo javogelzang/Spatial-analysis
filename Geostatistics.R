@@ -223,6 +223,23 @@ spplot(aquifer, "res2", key.space="right", scales=list(draw=TRUE))
 aq.vgm1 = variogram(res1 ~ 1, aquifer)
 aq.vgm2 = variogram(res2 ~ 1, aquifer)
 plot(aq.vgm1)
+plot(aq.vgm2)
+
+aq.mod1 = fit.variogram(aq.vgm1, vgm(0, 'Sph', 40000, 100))
+aq.mod2 = fit.variogram(aq.vgm2, vgm(0, 'Sph', 40000, 100))
+
+plot(aq.vgm1, aq.mod1)
+plot(aq.vgm2, aq.mod2)
+
+#Kriging on residuals on 1st order trend
+aq.res1 = krige(res1 ~ 1, aquifer, aqgrid_1, aq.mod1)
+spplot(aq.res1)
+summary(aq.res1)
+
+#Kriging on residuals on 2nd order trend
+aq.res2 = krige(res2 ~ 1, aquifer, aqgrid_1, aq.mod2)
+spplot(aq.res2)
+summary(aq.res2)
 
 #Local trends in a neighborhood may also be fitted
 m = krige(log(wt) ~ x+y, aquifer, aqgrid_1, nmax=10)
