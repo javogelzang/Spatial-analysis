@@ -206,9 +206,25 @@ aqgrid_1$tr1 = krige(log(wt) ~1, aquifer, aqgrid_1, degree=1)$var1.pred
 aqgrid_1$tr2 = krige(log(wt) ~1, aquifer, aqgrid_1, degree=2)$var1.pred
 aqgrid_1$tr3 = krige(log(wt) ~1, aquifer, aqgrid_1, degree=3)$var1.pred
 spplot(aqgrid_1, c("tr1", "tr2", "tr3"), sp.layout=meuse.lt,
-       main="log(zinc),trend surface interpolation")
+       main="water table height, trend surface", key.space="right", scales=list(draw=TRUE))
 
-#Local trends in a neighbourhood may also be fitted
+#Get residuals from 1st and 2nd order trend
+aquifer$res1 = residuals(lm(wt ~ x + y, aquifer))
+aquifer$res2 = residuals(lm(wt ~ x + y + I(x^2) + I(y^2) + I(x*y), aquifer))
+
+mean(aquifer$res1)
+mean(aquifer$res2)
+summary(aquifer)
+
+#Create plots of the residuals and calculate variograms
+spplot(aquifer, "res1", key.space="right", scales=list(draw=TRUE))
+spplot(aquifer, "res2", key.space="right", scales=list(draw=TRUE))
+
+aq.vgm1 = variogram(res1 ~ 1, aquifer)
+aq.vgm2 = variogram(res2 ~ 1, aquifer)
+plot(aq.vgm1)
+
+#Local trends in a neighborhood may also be fitted
 m = krige(log(wt) ~ x+y, aquifer, aqgrid_1, nmax=10)
 spplot(m, "var1.pred", sp.layout=aquifer.lt, main="local 1st order trend")
 
