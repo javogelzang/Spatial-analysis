@@ -172,5 +172,3 @@ spplot(lzn.ok, c("block", "block400"), scales = list(draw=TRUE), names.attr = c(
 #Load datasets
 aqgrid = read.csv("~/Documents/ADS Master/Spatial Statistics/Lab Sessions/Spatial interpolation 2/aqgrid.csv")
 aquifer = read.csv("~/Documents/ADS Master/Spatial Statistics/Lab Sessions/Spatial interpolation 2/Aquifer.csv")
-
-
