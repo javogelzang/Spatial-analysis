@@ -241,6 +241,13 @@ aq.res2 = krige(res2 ~ 1, aquifer, aqgrid_1, aq.mod2)
 spplot(aq.res2)
 summary(aq.res2)
 
+#Water table prediction with 1st order trend
+aq.res1$tr = aqgrid_1$tr1
+summary(aq.res1$tr)
+
+#Water table prediction with 2nd order trend
+aq.res2$tr = aqgrid_2$tr2
+
 #Local trends in a neighborhood may also be fitted
 m = krige(log(wt) ~ x+y, aquifer, aqgrid_1, nmax=10)
 spplot(m, "var1.pred", sp.layout=aquifer.lt, main="local 1st order trend")
