@@ -57,110 +57,39 @@ spplot(aq.res2)
 summary(aq.res2)
 
 #Water table prediction with 1st order trend
+aq.res1$tr = aqgrid$tr1
+aq.res1$wt = aq.res1$var1.pred + aq.res1$tr
+spplot(aq.res1, 'wt', main='Ordinary kriging of water table', key.space='right',
+       scales=list(draw=TRUE))
 
-
-
-aqgrid_1 = aqgrid[, 1:2]
-aqgrid_1.sp = SpatialPolygons(list(Polygons(list(Polygon(aqgrid_1)), "aqgrid")))
-aqgrid_1.lt = list("sp.polygons", aqgrid_1.sp, fill="grey")
-spplot(aquifer, "wt", key.space="right", sp.layout = aqgrid_1.lt)
-aqgrid_1 = as.data.frame(aqgrid_1)
-
-#Grids
-data(aqgrid_1)
-class(aqgrid_1)
-coordinates(aqgrid_1)=c("x",  "y")
-aqgrid_1 <- SpatialPointsDataFrame(aqgrid_1, data.frame(ID=1:length(aqgrid_1)))
-class(aqgrid_1)
-gridded(aqgrid_1)=TRUE
-class(aqgrid_1)
-summary(aqgrid_1)
-aquifer.lt = list(pts=list("sp.points", aquifer, pch=3, cex=0.5, col="black"))
-spplot(aqgrid_1, sp.layout=aquifer.lt, key.space="right")
-
-data(aqgrid_1)
-coordinates(aqgrid_1)=~x+y
-gridded(aqgrid_1)=TRUE
-
-
-
-
-
-
-
-
-
-#Kriging on residuals on 1st order trend
-aq.res1 = krige(res1 ~ 1, aquifer, aqgrid_1, aq.mod1)
-spplot(aq.res1)
-summary(aq.res1)
-
-#Kriging on residuals on 2nd order trend
-aq.res2 = krige(res2 ~ 1, aquifer, aqgrid_1, aq.mod2)
-spplot(aq.res2)
-summary(aq.res2)
-
-#Water table prediction with 1st order trend
-aq.res1$tr = aqgrid_1$tr1
-summary(aq.res1$tr)
+aq.res1$se = sqrt(aq.res1$var1.var)
+spplot(aq.res1, 'se', main='Kriging standard error', key.space='right', 
+       scales=list(draw=TRUE))
 
 #Water table prediction with 2nd order trend
-aq.res2$tr = aqgrid_2$tr2
+aq.res2$tr = aqgrid$tr2
+aq.res2$wt = aq.res2$var1.pred + aq.res2$tr
+spplot(aq.res2, 'wt', main='Ordinary kriging of water table', key.space='right',
+       scales=list(draw=TRUE))
 
-#Local trends in a neighborhood may also be fitted
-m = krige(log(wt) ~ x+y, aquifer, aqgrid_1, nmax=10)
-spplot(m, "var1.pred", sp.layout=aquifer.lt, main="local 1st order trend")
+aq.res2$se = sqrt(aq.res2$var1.var)
+spplot(aq.res2, 'se', main='Kriging standard error', key.space='right', 
+       scales=list(draw=TRUE))
 
-#Inverse distance interpolation
-lzn.tp = idw(log(wt) ~ 1, aquifer, aqgrid_1)
-spplot(lzn.tp, "var1.pred", sp.layout=aquifer.lt, main="log(water), inverse distance inter polation")
-aqgrid_1$idp0.5 = idw(log(wt) ~1, aquifer, aqgrid_1, idp=0.5)$var1.pred
-aqgrid_1$idp02 = idw(log(wt) ~1, aquifer, aqgrid_1, idp=2)$var1.pred
-aqgrid_1$idp05 = idw(log(wt) ~1, aquifer, aqgrid_1, idp=5)$var1.pred
-aqgrid_1$idp10 = idw(log(wt) ~1, aquifer, aqgrid_1, idp=10)$var1.pred
-spplot(aqgrid_1,c("idp0.5", "idp02", "idp05", "idp10"), sp.layout=aquifer.lt,
-       main="log(water), inverse distance interpolation")
+#Universal kriging with 1st order drift
+aq.res1$ukr1 = krige(wt ~ x+y, aquifer, aqgrid, aq.mod1)$var1.pred
+aq.res1$uk1var = krige(wt ~ x+y, aquifer, aqgrid, aq.mod1)$var1.var
+aq.res1$uk1se = sqrt(aq.res1$uk1var)
+spplot(aq.res1, 'ukr1', main='Universal kriging of water table', key.space='right',
+       scales=list(draw=TRUE))
+spplot(aq.res1, 'uk1se', main='Universal kriging standard error', key.space='right',
+       scales=list(draw=TRUE))
 
-#Variogram cloud and point pair plots
-water.vgm = variogram(log(wt) ~ 1, aquifer, cloud=TRUE)
-pp.water = plot(water.vgm, identify=TRUE)
-plot(pp.water, aquifer)
-
-pp.sel = plot(lzn.vgm, digitize=TRUE)
-plot(pp.sel, meuse)
-
-#Outliers
-aquifer.outl = aquifer
-aquifer.outl$water[1] = 1e+05
-lzn2.vgm = variogram(log(wt) ~ 1, aquifer.outl, cloud=TRUE)
-pp.sel = plot(lzn2.vgm, identify=TRUE)
-plot(pp.sel, aquifer.outl)
-
-#Sample variogram and variogram model
-lzn3.vgm = variogram(log(wt) ~ 1, aquifer)
-lzn3.vgm 
-plot(lzn3.vgm)
-
-lzn4.vgm = variogram(log(wt) ~ 1, aquifer, cutoff = 40000, width=50)
-lzn4.vgm
-plot(lzn4.vgm)
-
-#Kriging
-lzn5.vgm = variogram(log(wt)~ 1, aquifer, cutoff = 40000, width = 50)
-plot(gamma ~ dist, lzn5.vgm)
-lines(c(0, lzn5.vgm$dist), c(0, lzn5.vgm$gamma))
-
-#Show valid parametic models
-show.vgms()
-
-#Try a spherical model
-lzn6.vgm = variogram(log(wt) ~ 1, aquifer)
-plot(lzn6.vgm)
-lzn6.mod = vgm(0.6, 'Hol', 10000, 0.05)
-plot(lzn6.vgm, lzn6.mod)
-
-#Fit the three parameters automatically
-lzn7.vgm = variogram(log(zinc)~ 1, meuse)
-lzn7.mod = fit.variogram(lzn7.vgm, vgm(0.0005, "Hol", 10000, 0.0001))
-lzn7.mod
-plot(lzn7.vgm, lzn7.mod)
+#Universal kriging with 2nd order drift
+aq.res2$ukr2 = krige(wt ~ x+y, aquifer, aqgrid, aq.mod2)$var1.pred
+aq.res2$uk2var = krige(wt ~ x+y, aquifer, aqgrid, aq.mod1)$var1.var
+aq.res2$uk2se = sqrt(aq.res2$uk2var)
+spplot(aq.res2, 'ukr2', main='Universal kriging of water table', key.space='right',
+       scales=list(draw=TRUE))
+spplot(aq.res2, 'uk2se', main='Universal kriging standard error', key.space='right', 
+       scales=list(draw=TRUE))
