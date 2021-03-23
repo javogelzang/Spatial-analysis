@@ -30,7 +30,20 @@ plot(bristol.sf$geometry)
 bristol.sf1=bristol.sf[1:100,]
 plot(bristol.sf1$geometry)
 
-#plotting the the data together with maps 
+#plotting the the pricing data together with maps 
+tmap_mode("view")
+bristol.sf$stand.price = as.numeric(scale(bristol.sf$Price)) #<-plotting different prices in differnt colors
+tm_shape(bristol.sf) + tm_dots(col = "stand.price", size = 0.05)
+
+#Check distribution of price
+ggplot(bristol.sf, aes(x=Price))+
+  geom_histogram()
+
+#Might be better to work with logarithmic scale
+ggplot(bristol.sf, aes(x=lnPrice))+
+  geom_histogram()
+
+#plotting the the logartihmic scale price together with maps 
 tmap_mode("view")
 bristol.sf$stand.price = as.numeric(scale(bristol.sf$lnPrice)) #<-plotting different prices in differnt colors
 tm_shape(bristol.sf) + tm_dots(col = "stand.price", size = 0.05)
@@ -38,30 +51,38 @@ tm_shape(bristol.sf) + tm_dots(col = "stand.price", size = 0.05)
 #extrating the coordinates from the dataste
 bristol.coords = st_coordinates(bristol.sf)
 
-#definig adjancecy W
+#Coords are in meters
+bristol.coords
+
+#Defining adjacency W
+#Location is near if less than 500 meters
 bristol.nb = dnearneigh(bristol.coords, 0, 500, longlat = FALSE) #defining as adjacent all obs closer than 500
+
+#Zero policy at true so that points could have zero near points. 
 bristol.Wadj = nb2listw(bristol.nb, style = "W", zero.policy = TRUE) #computing W; style W row normalized; B non-normalized; zero.policy = 1 means that some obs may have no adjacent obs
 
-#zero policy must be indicated everytime
+#Zero policy must be indicated everytime
 summary(bristol.Wadj)
 bristol.Wadj
 summary(bristol.Wadj, zero.policy=TRUE)
 
 set.ZeroPolicyOption(TRUE) # unless we set it.
-summary(bristol.Wadj)#not it works without indicatin zero policy
+summary(bristol.Wadj)#not it works without indication zero policy
 bristol.Wadj
 
 #Printing the weights for the first 5 obs.
 weights(bristol.Wadj)[1:5]
 
-#definig distance-based W: 1/d
+#Defining distance-based W: 1/d
 
-#note that we only calculate for the ajacent obs (but it can be changed)
+#Note that we only calculate for the adjacent obs (but it can be changed)
 dist = nbdists(bristol.nb,bristol.coords, longlat = TRUE)
 ids = lapply(dist, function(x) 1/(x))
 ids[1:5]
 
 bristol.Wids = nb2listw(bristol.nb, glist = ids, style = "W", zero.policy = TRUE)
+
+#Now the weights are based on their distance 
 weights(bristol.Wids)[1:5]
 
 #definig distance-based W: 1/d^2
@@ -71,7 +92,7 @@ ids2[1:5]
 bristol.Wids2 = nb2listw(bristol.nb, glist = ids2, style = "W", zero.policy = TRUE)
 weights(bristol.Wids2)[1:5]
 
-#definig distance-based W: exp(-x)
+#Defining distance-based W: exp(-x)
 expdis <- lapply(dist, function(x) {
   tryCatch(exp(-x/10000), error = function(e) return(NULL))
 })
