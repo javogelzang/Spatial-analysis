@@ -93,3 +93,4 @@ spplot(aq.res2, 'ukr2', main='Universal kriging of water table', key.space='righ
        scales=list(draw=TRUE))
 spplot(aq.res2, 'uk2se', main='Universal kriging standard error', key.space='right', 
        scales=list(draw=TRUE))
+

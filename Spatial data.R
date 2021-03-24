@@ -1,8 +1,3 @@
-#Packages to read and work with shapes
-install.packages("sf")
-install.packages("spdep")
-install.packages("tmap")
-
 #Loading Packages 
 library("sf")
 library("spdep")
@@ -56,7 +51,7 @@ bristol.coords
 
 #Defining adjacency W
 #Location is near if less than 500 meters
-bristol.nb = dnearneigh(bristol.coords, 0, 500, longlat = FALSE) #defining as adjacent all obs closer than 500
+bristol.nb = dnearneigh(bristol.coords, 0, 1000, longlat = FALSE) #defining as adjacent all obs closer than 500
 
 #Zero policy at true so that points could have zero near points. 
 bristol.Wadj = nb2listw(bristol.nb, style = "W", zero.policy = TRUE) #computing W; style W row normalized; B non-normalized; zero.policy = 1 means that some obs may have no adjacent obs
@@ -120,3 +115,7 @@ summary(price.err_ids2)
 #Estimating Spatial Error Model with distance-based W exp(-x)
 price.err_expdis = errorsarlm(lnPrice ~ Type, data = bristol.sf, listw= bristol.Wexpdis,zero.policy = TRUE)
 summary(price.err_expdis)
+
+#Estimating Spatial Error Model with adjacency W
+price.err_adj = errorsarlm(lnPrice ~ Type + Outdoors + Access, data = bristol.sf, listw= bristol.Wadj,zero.policy = TRUE)
+summary(price.err_adj)
