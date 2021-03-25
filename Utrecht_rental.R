@@ -130,3 +130,4 @@ summary(price.err_expdis)
 price.err_adj = errorsarlm(lnPrice ~ Type + Outdoors + Access, data = bristol.sf, listw= bristol.Wadj,zero.policy = TRUE)
 summary(price.err_adj)
 
+
