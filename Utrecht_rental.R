@@ -8,6 +8,7 @@ library(geosphere)
 #Reading the dataset containing the rental properties
 setwd('/Users/jaspervogelzang/Documents/ADS Master/Spatial Statistics/Project/')
 utrecht.sf = read_sf("rental_central.shp", stringsAsFactors = T)
+rentals = read.csv('rental_25Mar.csv')
 
 #Reading the dataset containing the venues
 venues.sf = read_sf("utrecht_venues.shp", stringsAsFactors = T)
@@ -130,4 +131,13 @@ summary(price.err_expdis)
 price.err_adj = errorsarlm(lnPrice ~ Type + Outdoors + Access, data = bristol.sf, listw= bristol.Wadj,zero.policy = TRUE)
 summary(price.err_adj)
 
+#Model with all variables
+price = errorsarlm(Rent ~ Size + restaurants_dist + Furnished_furnished +
+             Furnished_shell ,data = rentals,
+           listw= utrecht.Wadj,zero.policy = TRUE)
+summary(price)
+
+price.err_adj = errorsarlm(Rent ~ Size + restaurants_dist + Furnished_furnished +
+                             Furnished_shell ,data = rentals, listw= utrecht.Wadj,zero.policy = TRUE)
+summary(price.err_adj)
 
