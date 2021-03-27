@@ -4,18 +4,40 @@ library(spdep)
 library(tmap)
 library(ggplot2)
 library(geosphere)
+library(caret)
 
 #Reading the dataset containing the rental properties
 setwd('/Users/jaspervogelzang/Documents/ADS Master/Spatial Statistics/Project/')
 utrecht.sf = read_sf("rental_central.shp", stringsAsFactors = T)
-rentals = read.csv('rental_25Mar.csv')
-
+rentals = read.csv('rental_complete_old.csv')
+rentals = na.omit(rentals)
+complete = read.csv('rentals_complete.csv')
+complete[, 15:16] <- sapply(complete[, 15:16], as.numeric)
 #Reading the dataset containing the venues
 venues.sf = read_sf("utrecht_venues.shp", stringsAsFactors = T)
 
 #Check column names
 names(utrecht.sf)
 names(venues.sf)
+
+#Normalizing
+preproc1 <- preProcess(complete[,c(10:16)], method=c('center', 'scale'))
+norm1 <- predict(preproc1, complete[,c(10:16)])
+
+normalized = as.data.frame(norm1)
+normalized['Rent'] = complete['Rent']
+normalized['Rooms'] = complete['Rooms']
+normalized['Furnished_furnished'] = complete['Furnished_furnished']
+normalized['Furnished_upholstered'] = complete['Furnished_upholstered']
+normalized['Size'] = complete['Size']
+normalized['center'] = complete['center']
+normalized['collected'] = complete['collected']
+
+#Split on new and old dataset
+old = complete[complete$collected == '0',]
+new = complete[complete$collected == '1',]
+
+
 
 #Plotting the coordinates
 plot(utrecht.sf$geometry)
@@ -108,7 +130,8 @@ utrecht.Wexpdis = nb2listw(utrecht.nb, glist = expdis, style = "W", zero.policy 
 weights(utrecht.Wexpdis)[1:5]
 
 #Estimating LR without correlation (OLS)
-price.ols = lm(lnRent ~ Size + Furnished + Rooms, data = utrecht.sf)
+price.ols = lm(Rent ~ Size + restaurants_dist + Furnished_furnished +
+                 Furnished_shell + criminal + schools_dist + woz_waarde ,data = rentals)
 summary(price.ols)
 
 #Estimating Spatial Error Model with adjacency W
@@ -133,7 +156,7 @@ summary(price.err_adj)
 
 #Model with all variables
 price = errorsarlm(Rent ~ Size + restaurants_dist + Furnished_furnished +
-             Furnished_shell ,data = rentals,
+             Furnished_shell + criminal + schools_dist + woz_waarde ,data = rentals,
            listw= utrecht.Wadj,zero.policy = TRUE)
 summary(price)
 
@@ -141,3 +164,16 @@ price.err_adj = errorsarlm(Rent ~ Size + restaurants_dist + Furnished_furnished 
                              Furnished_shell ,data = rentals, listw= utrecht.Wadj,zero.policy = TRUE)
 summary(price.err_adj)
 
+#Linear model with all variables
+price.ols = lm(Rent ~ Size + Rooms + Furnished_furnished + Furnished_upholstered +
+                 center + schools_dist + park_dist + restaurants_dist +  bus_dist + Train_dist + woz_waarde +
+                 criminal + collected, data = complete)
+sm <- summary(price.ols)
+
+
+#Linear model with only significant variables and high R-squared
+price.ols = lm(Rent ~ Size + Rooms + Furnished_furnished + Furnished_upholstered +
+                 restaurants_dist + Train_dist + woz_waarde +
+                 criminal + collected, data = complete)
+sm <- summary(price.ols)
+sm
