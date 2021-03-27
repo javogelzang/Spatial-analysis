@@ -5,6 +5,8 @@ library(tmap)
 library(ggplot2)
 library(geosphere)
 library(caret)
+library(quantreg)
+library(FNN)
 
 #Reading the dataset containing the rental properties
 setwd('/Users/jaspervogelzang/Documents/ADS Master/Spatial Statistics/Project/')
@@ -37,7 +39,16 @@ normalized['collected'] = complete['collected']
 old = complete[complete$collected == '0',]
 new = complete[complete$collected == '1',]
 
+#Dealing with outliers
+boxplot(complete$Rent)
+Q <- quantile(complete$Rent, probs=c(.25, .75), na.rm = FALSE)
+iqr <- IQR(complete$Rent)
+up <- Q[2]+1.5*iqr
+low <- Q[1]-1.5*iqr
+complete<- subset(complete, complete$Rent > (Q[1] - 2*iqr) & complete$Rent < (Q[2]+2*iqr))
 
+#Compute logarithms of rent price
+complete$lnRent= log(complete$Rent)
 
 #Plotting the coordinates
 plot(utrecht.sf$geometry)
@@ -59,14 +70,11 @@ tm_shape(library.sf) + tm_dots(size=0.05)
 library.coords = st_coordinates(library.sf)
 
 #Check the distribution of the rental prices
-ggplot(utrecht.sf, aes(x=Rent))+
+ggplot(complete, aes(x=Rent))+
   geom_histogram()
 
-#Compute logarithms of rent price
-utrecht.sf$lnRent= log(utrecht.sf$Rent)
-
 #Check the distribution of log(rent)
-ggplot(utrecht.sf, aes(x=lnRent))+
+ggplot(complete, aes(x=lnRent))+
   geom_histogram()
 
 #Plotting the log(rent) data together with maps 
@@ -177,3 +185,46 @@ price.ols = lm(Rent ~ Size + Rooms + Furnished_furnished + Furnished_upholstered
                  criminal + collected, data = complete)
 sm <- summary(price.ols)
 sm
+
+#Performing Random Forest Regression
+trctrl <- trainControl(method = "none")
+
+#Train random forest model with variables selected by linear regression
+complete = na.omit(complete)
+rfregFit <- train(Rent ~ Size + Rooms + Furnished_furnished + Furnished_upholstered +
+                    restaurants_dist + Train_dist + woz_waarde +
+                    criminal + collected, 
+                  data = complete, 
+                  method = "ranger",
+                  trControl=trctrl,
+                    # calculate importance
+                  importance="permutation", 
+                  tuneGrid = data.frame(mtry=8, min.node.size = 5, splitrule="variance")
+)
+
+#Train random forest model with full variables and log(Rent)
+rfregFit <- train(lnRent ~ Size + Rooms + Furnished_furnished + Furnished_upholstered +
+                    center + schools_dist + park_dist + restaurants_dist + bus_dist + 
+                    Train_dist + woz_waarde + criminal + collected, 
+                  data = complete, 
+                  method = "ranger",
+                  trControl=trctrl,
+                  # calculate importance
+                  importance="permutation", 
+                  tuneGrid = data.frame(mtry=12, min.node.size = 5, splitrule="variance")
+)
+#Plot the Observed vs OOB predicted values from the model
+plot(complete$Rent,rfregFit$finalModel$predictions,
+     pch=19,xlab="observed Rent",
+     ylab="OOB predicted Rent")
+mtext(paste("R-squared",
+            format(rfregFit$finalModel$r.squared,digits=2)))
+
+#Plot the residuals
+plot(complete$Rent,(rfregFit$finalModel$predictions-complete$Rent),
+     pch=18,ylab="residuals (predicted-observed)",
+     xlab="observed Rent",col="blue4")
+abline(h=0,col="red4",lty=2)
+
+#R-squared of final model
+rfregFit$finalModel$r.squared
