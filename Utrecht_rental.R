@@ -186,6 +186,13 @@ price.ols = lm(Rent ~ Size + Rooms + Furnished_furnished + Furnished_upholstered
 sm <- summary(price.ols)
 sm
 
+#Linear model with only significant variables and high R-squared on log(rent)
+price.ols = lm(lnRent ~ Size + Rooms + Furnished_furnished + Furnished_upholstered +
+                 restaurants_dist + Train_dist + woz_waarde +
+                 criminal + collected, data = complete)
+sm <- summary(price.ols)
+sm
+
 #Performing Random Forest Regression
 trctrl <- trainControl(method = "none")
 
