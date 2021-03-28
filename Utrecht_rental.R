@@ -8,19 +8,19 @@ library(caret)
 library(quantreg)
 library(FNN)
 
-#Reading the dataset containing the rental properties
+#Reading the dataset containing the rental properties and venues
 setwd('/Users/jaspervogelzang/Documents/ADS Master/Spatial Statistics/Project/')
 utrecht.sf = read_sf("rental_central.shp", stringsAsFactors = T)
 rentals = read.csv('rental_complete_old.csv')
 rentals = na.omit(rentals)
 complete = read.csv('rentals_complete.csv')
 complete[, 15:16] <- sapply(complete[, 15:16], as.numeric)
-#Reading the dataset containing the venues
 venues.sf = read_sf("utrecht_venues.shp", stringsAsFactors = T)
+complete.sf = read_sf("rentals_complete.shp", stringsAsFactors = T)
+complete.sf[, 15:16] <- lapply(complete.sf[, 15:16], as.numeric)
 
-#Check column names
-names(utrecht.sf)
-names(venues.sf)
+#Deal with missing values
+complete.sf = na.omit(complete.sf)
 
 #Normalizing
 preproc1 <- preProcess(complete[,c(10:16)], method=c('center', 'scale'))
@@ -48,51 +48,53 @@ low <- Q[1]-1.5*iqr
 complete<- subset(complete, complete$Rent > (Q[1] - 2*iqr) & complete$Rent < (Q[2]+2*iqr))
 
 #Compute logarithms of rent price
-complete$lnRent= log(complete$Rent)
+complete.sf$lnRent= log(complete.sf$Rent)
 
 #Plotting the coordinates
-plot(utrecht.sf$geometry)
+plot(complete.sf$geometry)
 
-#Plotting the the rent data together with maps 
+#Plotting the rent data together with maps 
 tmap_mode("view")
-utrecht.sf$stand.rent = as.numeric(scale(utrecht.sf$Rent)) #<-plotting different prices in different colors
-tm_shape(utrecht.sf) + tm_dots(col = "stand.rent", size = 0.05)
+tm_shape(complete.sf) + tm_dots(col = "Rent", size = 0.05)
+
+#Plotting the standardised rent data together with maps 
+tmap_mode("view")
+complete.sf$stand.rent = as.numeric(scale(complete.sf$Rent)) #<-plotting different prices in different colors
+tm_shape(complete.sf) + tm_dots(col = "stand.rent", size = 0.05)
+
+#Plotting the log(rent) data together with maps 
+tmap_mode("view")
+complete.sf$stand.rent = as.numeric(scale(complete.sf$lnRent)) #<-plotting different prices in different colors
+tm_shape(complete.sf) + tm_dots(col = "stand.rent", size = 0.05)
 
 #Plotting venues together with maps
 tmap_mode("view")
 tm_shape(venues.sf) + tm_dots(size = 0.05)
 
-#Plotting libraries in Utrecht
+#Plotting train stations in Utrecht
 tmap_mode("view")
 train.sf = subset(venues.sf, Venue.Cate == 'Train Station')
-tm_shape(library.sf) + tm_dots(size=0.05)
+tm_shape(train.sf) + tm_dots(size=0.05)
 
-library.coords = st_coordinates(library.sf)
+train.coords = st_coordinates(train.sf)
 
 #Check the distribution of the rental prices
-ggplot(complete, aes(x=Rent))+
+ggplot(complete.sf, aes(x=Rent))+
   geom_histogram()
 
 #Check the distribution of log(rent)
-ggplot(complete, aes(x=lnRent))+
+ggplot(complete.sf, aes(x=lnRent))+
   geom_histogram()
 
-#Plotting the log(rent) data together with maps 
-tmap_mode("view")
-utrecht.sf$stand.rent = as.numeric(scale(utrecht.sf$lnRent)) #<-plotting different prices in different colors
-tm_shape(utrecht.sf) + tm_dots(col = "stand.rent", size = 0.05)
-
 #extrating the coordinates from the dataste
-utrecht.coords = st_coordinates(utrecht.sf)
+utrecht.coords = st_coordinates(complete.sf)
 
 #Coords are in meters
 utrecht.coords
 
-#Measuring distance between rent property and nearby train station
-
 #Defining adjacency W
 #Location is near if less than 500 meters
-utrecht.nb = dnearneigh(utrecht.coords, 0, 500, longlat = FALSE) #defining as adjacent all obs closer than 500
+utrecht.nb = dnearneigh(utrecht.coords, 0, 250, longlat = FALSE) #defining as adjacent all obs closer than 500
 
 #Zero policy at true so that points could have zero near points. 
 utrecht.Wadj = nb2listw(utrecht.nb, style = "W", zero.policy = TRUE) #computing W; style W row normalized; B non-normalized; zero.policy = 1 means that some obs may have no adjacent obs
@@ -138,33 +140,37 @@ utrecht.Wexpdis = nb2listw(utrecht.nb, glist = expdis, style = "W", zero.policy 
 weights(utrecht.Wexpdis)[1:5]
 
 #Estimating LR without correlation (OLS)
-price.ols = lm(Rent ~ Size + restaurants_dist + Furnished_furnished +
-                 Furnished_shell + criminal + schools_dist + woz_waarde ,data = rentals)
+price.ols = lm(lnRent ~ Size + restaurant + Furnished_ +
+                 Furnishe_1 + restaurant + Train_dist + woz + criminal_v +
+                 collected, data = complete.sf)
 summary(price.ols)
 
 #Estimating Spatial Error Model with adjacency W
-price.err_adj = errorsarlm(lnRent ~ Size + Furnished + Rooms, data = utrecht.sf, listw= utrecht.Wadj,zero.policy = TRUE)
+price.err_adj = errorsarlm(lnRent ~ Size + restaurant + Furnished_ +
+                             Furnishe_1 + restaurant + Train_dist + woz + criminal_v +
+                             collected, data = complete.sf, listw= utrecht.Wadj, zero.policy = TRUE)
 summary(price.err_adj)
 
 #Estimating Spatial Error Model with distance-based W 1/d
-price.err_ids = errorsarlm(lnPrice ~ Type, data = bristol.sf, listw= bristol.Wids,zero.policy = TRUE)
+price.err_ids = errorsarlm(lnRent ~ Size + restaurant + Furnished_ +
+                             Furnishe_1 + restaurant + Train_dist + woz + criminal_v +
+                             collected, data = complete.sf, listw= utrecht.Wids, zero.policy = TRUE)
 summary(price.err_ids)
 
 #Estimating Spatial Error Model with distance-based W 1/d^2
-price.err_ids2 = errorsarlm(lnPrice ~ Type, data = bristol.sf, listw= bristol.Wids2,zero.policy = TRUE)
+price.err_ids2 = errorsarlm(lnRent ~ Size + restaurant + Furnished_ +
+                              Furnishe_1 + restaurant + Train_dist + woz + criminal_v +
+                              collected, data = complete.sf, listw= utrecht.Wids2,zero.policy = TRUE)
 summary(price.err_ids2)
 
 #Estimating Spatial Error Model with distance-based W exp(-x)
-price.err_expdis = errorsarlm(lnPrice ~ Type, data = bristol.sf, listw= bristol.Wexpdis,zero.policy = TRUE)
+price.err_expdis = errorsarlm(lnRent ~ Size + restaurant + Furnished_ +
+                                Furnishe_1 + restaurant + Train_dist + woz + criminal_v +
+                                collected, data = complete.sf, listw= utrecht.Wexpdis,zero.policy = TRUE)
 summary(price.err_expdis)
 
-#Estimating Spatial Error Model with adjacency W
-price.err_adj = errorsarlm(lnPrice ~ Type + Outdoors + Access, data = bristol.sf, listw= bristol.Wadj,zero.policy = TRUE)
-summary(price.err_adj)
-
 #Model with all variables
-price = errorsarlm(Rent ~ Size + restaurants_dist + Furnished_furnished +
-             Furnished_shell + criminal + schools_dist + woz_waarde ,data = rentals,
+price = errorsarlm(lnRent ~ ., data = complete.sf,
            listw= utrecht.Wadj,zero.policy = TRUE)
 summary(price)
 
@@ -180,11 +186,18 @@ sm <- summary(price.ols)
 
 
 #Linear model with only significant variables and high R-squared
-price.ols = lm(Rent ~ Size + Rooms + Furnished_furnished + Furnished_upholstered +
-                 restaurants_dist + Train_dist + woz_waarde +
-                 criminal + collected, data = complete)
+price.ols = lm(lnRent ~ Size + restaurant + Furnished_ +
+                 Furnishe_1 + restaurant + Train_dist + woz + criminal_v +
+                 collected, data = complete.sf,)
 sm <- summary(price.ols)
 sm
+
+#Plot the residuals on a map
+tmap_mode("view")
+complete.sf$LR_residuals = price.ols$residuals
+complete.sf$stand.LR_residuals = as.numeric(scale(complete.sf$LR_residuals)) #<-plotting different prices in different colors
+tm_shape(complete.sf) + tm_dots(col = "stand.LR_residuals", size = 0.05)
+
 
 #Linear model with only significant variables and high R-squared on log(rent)
 price.ols = lm(lnRent ~ Size + Rooms + Furnished_furnished + Furnished_upholstered +
@@ -197,11 +210,10 @@ sm
 trctrl <- trainControl(method = "none")
 
 #Train random forest model with variables selected by linear regression
-complete = na.omit(complete)
-rfregFit <- train(Rent ~ Size + Rooms + Furnished_furnished + Furnished_upholstered +
-                    restaurants_dist + Train_dist + woz_waarde +
-                    criminal + collected, 
-                  data = complete, 
+complete.sf = na.omit(complete.sf)
+rfregFit <- train(lnRent ~ Size + restaurant + Furnished_ +
+                    Furnishe_1 + restaurant + Train_dist + woz + criminal_v +
+                    collected, data = complete.sf, 
                   method = "ranger",
                   trControl=trctrl,
                     # calculate importance
@@ -212,7 +224,7 @@ rfregFit <- train(Rent ~ Size + Rooms + Furnished_furnished + Furnished_upholste
 #Train random forest model with full variables and log(Rent)
 rfregFit <- train(lnRent ~ Size + Rooms + Furnished_furnished + Furnished_upholstered +
                     center + schools_dist + park_dist + restaurants_dist + bus_dist + 
-                    Train_dist + woz_waarde + criminal + collected, 
+                    Train_dist + woz_waarde + criminal + collected + Latitude + longitude, 
                   data = complete, 
                   method = "ranger",
                   trControl=trctrl,
@@ -221,17 +233,25 @@ rfregFit <- train(lnRent ~ Size + Rooms + Furnished_furnished + Furnished_uphols
                   tuneGrid = data.frame(mtry=12, min.node.size = 5, splitrule="variance")
 )
 #Plot the Observed vs OOB predicted values from the model
-plot(complete$Rent,rfregFit$finalModel$predictions,
+plot(complete.sf$lnRent,rfregFit$finalModel$predictions,
      pch=19,xlab="observed Rent",
+     asp=1,
      ylab="OOB predicted Rent")
 mtext(paste("R-squared",
             format(rfregFit$finalModel$r.squared,digits=2)))
 
 #Plot the residuals
-plot(complete$Rent,(rfregFit$finalModel$predictions-complete$Rent),
+plot(complete.sf$lnRent,(rfregFit$finalModel$predictions-complete$lnRent),
      pch=18,ylab="residuals (predicted-observed)",
-     xlab="observed Rent",col="blue4")
+     xlab="observed Rent",col="blue4",
+     asp=1)
 abline(h=0,col="red4",lty=2)
 
 #R-squared of final model
 rfregFit$finalModel$r.squared
+
+#Plot the residuals on a map
+tmap_mode("view")
+complete.sf$RF_residuals = rfregFit$finalModel$predictions-complete$lnRent
+complete.sf$stand.RF_residuals = as.numeric(scale(complete.sf$RF_residuals)) #<-plotting different prices in different colors
+tm_shape(complete.sf) + tm_dots(col = "stand.RF_residuals", size = 0.05)
