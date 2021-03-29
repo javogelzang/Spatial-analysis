@@ -206,6 +206,10 @@ price.ols = lm(lnRent ~ Size + Rooms + Furnished_furnished + Furnished_upholster
 sm <- summary(price.ols)
 sm
 
+#Locating outlier with cooks
+cookd=cooks.distance(price.ols)
+which(cookd>1)
+
 #Performing Random Forest Regression
 trctrl <- trainControl(method = "none")
 
