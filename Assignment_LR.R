@@ -79,10 +79,105 @@ res=resid(model)
 pre=predict(model)
 plot(res~pre)
 
+hist(res)
+x <- -4:4
+lines(x, 99*0.7*dnorm(x,0,sd(res)),col=2)
+
+cookd=cooks.distance(model)
+which(cookd>1)
+ 
 income2 = subset(income, Income != 0)
 model = lm(LogIncome ~ ., data=income2)
 summary(model)
 plot(model)
+
+#Check if explanatory variables are highly correlated with variance inflation factor
+VIF1=VIF(lm(Dwelling_type ~ Cars + Bicycles + Children.Bicycles + Males + Females +
+              ED_Primary + ED_Middle + ED_Tech_Voc + ED_University + ACT_Working + ACT_Students +
+              ACT_Pensioner + ACT_House + ACT_Jobless + ACT_Other + SCHDL_Fulltime + SCHDL_Parttime +
+              SCHDL_Occasional + SCHDL_WE,data=income))
+VIF2=VIF(lm(Cars ~ Dwelling_type + Bicycles + Children.Bicycles + Males + Females +
+              ED_Primary + ED_Middle + ED_Tech_Voc + ED_University + ACT_Working + ACT_Students +
+              ACT_Pensioner + ACT_House + ACT_Jobless + ACT_Other + SCHDL_Fulltime + SCHDL_Parttime +
+              SCHDL_Occasional + SCHDL_WE,data=income))
+VIF3=VIF(lm(Bicycles ~ Cars + Dwelling_type + Children.Bicycles + Males + Females +
+              ED_Primary + ED_Middle + ED_Tech_Voc + ED_University + ACT_Working + ACT_Students +
+              ACT_Pensioner + ACT_House + ACT_Jobless + ACT_Other + SCHDL_Fulltime + SCHDL_Parttime +
+              SCHDL_Occasional + SCHDL_WE,data=income))
+VIF4=VIF(lm(Children.Bicycles ~ Cars + Bicycles + Dwelling_type + Males + Females +
+              ED_Primary + ED_Middle + ED_Tech_Voc + ED_University + ACT_Working + ACT_Students +
+              ACT_Pensioner + ACT_House + ACT_Jobless + ACT_Other + SCHDL_Fulltime + SCHDL_Parttime +
+              SCHDL_Occasional + SCHDL_WE,data=income))
+VIF5=VIF(lm(Males ~ Cars + Bicycles + Children.Bicycles + Dwelling_type + Females +
+              ED_Primary + ED_Middle + ED_Tech_Voc + ED_University + ACT_Working + ACT_Students +
+              ACT_Pensioner + ACT_House + ACT_Jobless + ACT_Other + SCHDL_Fulltime + SCHDL_Parttime +
+              SCHDL_Occasional + SCHDL_WE,data=income))
+VIF6=VIF(lm(Females ~ Cars + Bicycles + Children.Bicycles + Males + Dwelling_type +
+              ED_Primary + ED_Middle + ED_Tech_Voc + ED_University + ACT_Working + ACT_Students +
+              ACT_Pensioner + ACT_House + ACT_Jobless + ACT_Other + SCHDL_Fulltime + SCHDL_Parttime +
+              SCHDL_Occasional + SCHDL_WE,data=income))
+VIF8=VIF(lm(ED_Middle ~ Cars + Bicycles + Children.Bicycles + Males + Females + 
+              Dwelling_type + ED_Tech_Voc + ED_University + ACT_Working + ACT_Students +
+              ACT_Pensioner + ACT_House + ACT_Jobless + ACT_Other + SCHDL_Fulltime + SCHDL_Parttime +
+              SCHDL_Occasional + SCHDL_WE,data=income))
+VIF9=VIF(lm(ED_Tech_Voc ~ Cars + Bicycles + Children.Bicycles + Males + Females +
+              ED_Middle + Dwelling_type + ED_University + ACT_Working + ACT_Students +
+              ACT_Pensioner + ACT_House + ACT_Jobless + ACT_Other + SCHDL_Fulltime + SCHDL_Parttime +
+              SCHDL_Occasional + SCHDL_WE,data=income))
+VIF10=VIF(lm(ED_University ~ Cars + Bicycles + Children.Bicycles + Males + Females +
+              ED_Middle + ED_Tech_Voc + Dwelling_type + ACT_Working  + ACT_Students +
+              ACT_Pensioner + ACT_House + ACT_Jobless + ACT_Other + SCHDL_Fulltime + SCHDL_Parttime +
+              SCHDL_Occasional + SCHDL_WE,data=income))
+VIF12=VIF(lm(ACT_Students ~ Cars + Bicycles + Children.Bicycles + Males + Females +
+              ED_Primary + ED_Middle + ED_Tech_Voc + ED_University + Dwelling_type +
+              ACT_Pensioner + ACT_House + ACT_Jobless + ACT_Other + SCHDL_Fulltime + SCHDL_Parttime +
+              SCHDL_Occasional + SCHDL_WE,data=income))
+VIF13=VIF(lm(ACT_Pensioner ~ Cars + Bicycles + Children.Bicycles + Males + Females +
+              ED_Primary + ED_Middle + ED_Tech_Voc + ED_University + ACT_Students +
+              Dwelling_type + ACT_House + ACT_Jobless + ACT_Other + SCHDL_Fulltime + SCHDL_Parttime +
+              SCHDL_Occasional + SCHDL_WE,data=income))
+VIF14=VIF(lm(ACT_House ~ Cars + Bicycles + Children.Bicycles + Males + Females +
+              ED_Primary + ED_Middle + ED_Tech_Voc + ED_University + ACT_Students +
+              ACT_Pensioner + Dwelling_type + ACT_Jobless + ACT_Other + SCHDL_Fulltime + SCHDL_Parttime +
+              SCHDL_Occasional + SCHDL_WE,data=income))
+VIF15=VIF(lm(ACT_Jobless ~ Cars + Bicycles + Children.Bicycles + Males + Females +
+              ED_Primary + ED_Middle + ED_Tech_Voc + ED_University + ACT_Students +
+              ACT_Pensioner + ACT_House + Dwelling_type + ACT_Other + SCHDL_Fulltime + SCHDL_Parttime +
+              SCHDL_Occasional + SCHDL_WE,data=income))
+VIF16=VIF(lm(ACT_Other ~ Cars + Bicycles + Children.Bicycles + Males + Females +
+              ED_Primary + ED_Middle + ED_Tech_Voc + ED_University + ACT_Students +
+              ACT_Pensioner + ACT_House + ACT_Jobless + Dwelling_type + SCHDL_Fulltime + SCHDL_Parttime +
+              SCHDL_Occasional + SCHDL_WE,data=income))
+VIF18=VIF(lm(SCHDL_Parttime ~ Cars + Bicycles + Children.Bicycles + Males + Females +
+              ED_Primary + ED_Middle + ED_Tech_Voc + ED_University + ACT_Working + ACT_Students +
+              ACT_Pensioner + ACT_House + ACT_Jobless + ACT_Other + Dwelling_type +
+              SCHDL_Occasional + SCHDL_WE,data=income))
+VIF19=VIF(lm(SCHDL_Occasional ~ Cars + Bicycles + Children.Bicycles + Males + Females +
+              ED_Primary + ED_Middle + ED_Tech_Voc + ED_University + ACT_Working + ACT_Students +
+              ACT_Pensioner + ACT_House + ACT_Jobless + ACT_Other + SCHDL_Parttime +
+              Dwelling_type + SCHDL_WE,data=income))
+VIF20=VIF(lm(SCHDL_WE ~ Cars + Bicycles + Children.Bicycles + Males + Females +
+              ED_Primary + ED_Middle + ED_Tech_Voc + ED_University + ACT_Working + ACT_Students +
+              ACT_Pensioner + ACT_House + ACT_Jobless + ACT_Other + SCHDL_Parttime +
+              SCHDL_Occasional + Dwelling_type,data=income))
+VIF1
+VIF2
+VIF3
+VIF4
+VIF5
+VIF6
+VIF7
+VIF8
+VIF9
+VIF10
+VIF12
+VIF13
+VIF14
+VIF15
+VIF16
+VIF18
+VIF19
+VIF20
 
 #Check the distribution of the variables
 
