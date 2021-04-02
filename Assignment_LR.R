@@ -6,7 +6,7 @@ library(car)
 
 #Load data set
 setwd('/Users/jaspervogelzang/Documents/ADS Master/Spatial Statistics/Assignment Linear Regression/')
-income <- read.xlsx('income.xlsx',sheetName = 'Dataset')
+income <- read.csv("income.csv")
 names(income)
 
 #Explore data set
@@ -201,12 +201,6 @@ income$LogIncome = log(income$Income)
 
 #Renaming dwelling type to dummie variables
 income$own_mortgage <- (income$Dwelling_type==1)+0 
-income$own_outright <- (income$Dwelling_type==2)+0 
-income$rental <- (income$Dwelling_type==3)+0 
-income$free_rent <- (income$Dwelling_type==4)+0 
-income$rental_salary <- (income$Dwelling_type==5)+0 
-income$illegal <- (income$Dwelling_type==6)+0 
-income$other <- (income$Dwelling_type==7)+0 
 
 summary(lm(Income ~  own_outright + rental + free_rent + rental_salary + illegal + other, data = income))
 
@@ -222,5 +216,27 @@ ggplot(summary_stats, aes(Cars, log(mean_by_group))) +
 table(income_wi$Cars)
 summary(lm(Income ~ Cars, data=income))
 income$no_car = (income$Cars==0)+0
-income$one_car = (income$Cars=1)+1
+income$one_car = (income$Cars==1)+0
+income$two_car = (income$Cars==2)+0
+income$three_car = (income$Cars>2)+0
+income$more_car = (income$Cars==4)+0
 
+data = subset(income, select = -c(Cars, Dwelling_type, Persons, ED_Primary, ED_Middle, ED_Tech_Voc))
+summary(lm(Income ~ one_per + two_per + four_per + five_per + one_car + two_car + three_car, data=data))
+summary(lm(Income ~ one_per + two_per + four_per + one_car + two_car + three_car + 
+             own_mortgage + free_rent +rental + rental_salary + illegal, data=data))
+
+table(income$Persons)
+income$one_per = (income$Persons==1)+0
+income$two_three_per = (income$Persons==2 | income$Persons ==3)+0
+income$four_per = (income$Persons>3)+0
+
+summary(lm(Income ~ Persons + one_car + two_car + three_car, data=data))
+
+summary(lm(Income ~ one_car + two_car + three_car + 
+             Bicycles + Children.Bicycles +
+             own_mortgage +
+             one_per + four_per + ED_University
+             , data=data))
+
+income$prim = (income$ED_Primary==0 | income$ED_Middle ==0 | income$ED_Tech_Voc ==0)+0
