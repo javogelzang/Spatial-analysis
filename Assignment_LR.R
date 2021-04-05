@@ -14,8 +14,21 @@ names(income)
 #Check for missing values
 table(is.na(income))  
 
+#Bicycles 
+table(income$Bicycles) #Outliers with numbers of bicycles of 98 and 99 
+table(income$Children.Bicycles) #Outliers with numbers of bicycles of 98 and 99 
+#Removal of outliers
+income = subset(income, Bicycles != 98)
+income = subset(income_wi, Bicycles != 99)
+income = subset(income_wi, Children.Bicycles != 98)
+income = subset(income_wi, Children.Bicycles != 99)
+
 #Explore the correlations between the variables
 correlation = cor(income)
+
+#Linear model based on variables with high correlation to dependent variable 
+summary(lm(Income ~ Cars + ACT_Working + ED_University + ED_Tech_Voc + SCHDL_Fulltime +
+           SCHDL_Parttime + Persons + Females, data=income))
 
 #Explore data set
 #Income
@@ -34,14 +47,6 @@ table(income$Dwelling_type) #Categorical variable
 #Cars
 table(income$Cars) #Class size decreases after 3
 
-#Bicycles 
-table(income$Bicycles) #Outliers with numbers of bicycles of 98 and 99 
-table(income$Children.Bicycles) #Outliers with numbers of bicycles of 98 and 99 
-#Removal of outliers
-income_wi = subset(income, Bicycles != 98)
-income_wi = subset(income_wi, Bicycles != 99)
-income_wi = subset(income_wi, Children.Bicycles != 98)
-income_wi = subset(income_wi, Children.Bicycles != 99)
 nrow(income_wi)
 summary(lm(Income ~ Bicycles, data=income))
 summary(lm(Income ~ Bicycles, data=income_wi))
@@ -226,7 +231,7 @@ income$no_car = (income$Cars==0)+0
 income$one_car = (income$Cars==1)+0
 income$two_car = (income$Cars==2)+0
 income$three_car = (income$Cars>2)+0
-income$more_car = (income$Cars==4)+0
+income$more_car = (income$fCars==4)+0
 
 data = subset(income, select = -c(Cars, Dwelling_type, Persons, ED_Primary, ED_Middle, ED_Tech_Voc))
 summary(lm(Income ~ one_per + two_per + four_per + five_per + one_car + two_car + three_car, data=data))
@@ -234,9 +239,20 @@ summary(lm(Income ~ one_per + two_per + four_per + one_car + two_car + three_car
              own_mortgage + free_rent +rental + rental_salary + illegal, data=data))
 
 table(income$Persons)
-income$one_per = (income$Persons==1)+0
-income$two_three_per = (income$Persons==2 | income$Persons ==3)+0
-income$four_per = (income$Persons>3)+0
+income$under_persons = (income$Persons<3)+0
+income$above_persons = (income$Persons>2)+0
+
+#Model after grouping of number of people in the household
+persons_data = subset(income, select = -c(Persons))
+summary(lm(Income ~ Cars + ACT_Working + ED_University + ED_Tech_Voc + SCHDL_Fulltime +
+             SCHDL_Parttime + above_persons + Females + Bicycles, data=persons_data))
+
+#Transforming the variable bicycles into dummie variables
+income$own_bicyle = (income$Bicycles>0)+0
+income$no_bicycle = (income$Bicycles<1)+0
+persons_bicycle_data = subset(income, select = -c(Persons, Bicycles))
+summary(lm(Income ~ Cars + ACT_Working + ED_University + ED_Tech_Voc + SCHDL_Fulltime +
+             SCHDL_Parttime + above_persons + Females + own_bicyle, data=persons_bicycle_data))
 
 summary(lm(Income ~ Persons + one_car + two_car + three_car, data=income))
 
@@ -256,4 +272,5 @@ income$prim = (income$ED_Primary==0 | income$ED_Middle ==0 | income$ED_Tech_Voc 
 
 data = subset(income, select = -c(Income))
 summary(lm(LogIncome ~., data=data))
-summary
+summary(lm(LogIncome ~ Bicycles + Children.Bicycles + Bicycles * Children.Bicycles, data=data))
+plot(lm(Income ~., data=income))
