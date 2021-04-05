@@ -5,6 +5,7 @@ library(dplyr)
 library(car)
 library(fmsb)
 library(qpcR)
+library(MASS)
 
 #Load data set
 setwd('/Users/jaspervogelzang/Documents/ADS Master/Spatial Statistics/Assignment Linear Regression/')
@@ -318,7 +319,7 @@ model = lm(Income ~ own_bicyle + one_car + two_car + three_car + ED_University +
 cookd=cooks.distance(model)
 which(cookd>1)
 
-income$LogIncome = sqrt(income$Income)
+income$LogIncome = log(income$Income)
 model = lm(Income ~ own_bicyle + one_car + two_car + three_car + ED_University + ACT_Working + SCHDL_Fulltime +
              mortgage + ACT_Jobless + many_students +
              ACT_Pensioner + SCHDL_Parttime + Females + ED_Primary, data=income)
@@ -327,6 +328,19 @@ model_log = lm(LogIncome ~ own_bicyle + one_car + two_car + three_car + ED_Unive
              mortgage + ACT_Jobless + many_students +
              ACT_Pensioner + SCHDL_Parttime + Females + ED_Primary, data=income)
 summary(model_log)
+
+studres_resids <- studres(model)
+which(studres_resids>3)
+model_studres <- cbind(income, studres_resids)
+model_low <- subset(model_studres, model_studres$studres_resids <3)
+model_log_low = lm(LogIncome ~ own_bicyle + one_car + two_car + three_car + ED_University + ACT_Working + SCHDL_Fulltime +
+                 mortgage + ACT_Jobless + many_students +
+                 ACT_Pensioner + SCHDL_Parttime + Females + ED_Primary, data=model_low)
+summary(model_log_low)
+
+#Predicting the new variables 
+exp(predict(model_log, newdata=predict))
+
 #Model after grouping of number of people in the household
 persons_data = subset(income, select = -c(Persons))
 summary(lm(Income ~ Cars + ACT_Working + ED_University + ED_Tech_Voc + SCHDL_Fulltime +
