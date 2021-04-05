@@ -30,6 +30,8 @@ correlation = cor(income)
 summary(lm(Income ~ Cars + ACT_Working + ED_University + ED_Tech_Voc + SCHDL_Fulltime +
            SCHDL_Parttime + Persons + Females, data=income))
 
+summary(lm(Income ~ Cars + ED_University + ACT_Working + SCHDL_Fulltime, data=income))
+
 #Explore data set
 #Income
 min(income$Income)
@@ -95,7 +97,7 @@ sum(table(income$SCHDL_Occasional))
 sum(table(income$SCHDL_WE))
 
 #Setup of basic model
-income2 = subset(income, Income != 0)
+income = subset(income, Income != 0)
 income2$Income = log(income2$Income)
 model = lm(Income ~ ., data=income2)
 summary(model)
@@ -225,7 +227,7 @@ ggplot(summary_stats, aes(Cars, log(mean_by_group))) +
   geom_point()+
   geom_smooth(method='lm', se=FALSE)
 
-table(income_wi$Cars)
+table(income$Cars)
 summary(lm(Income ~ Cars, data=income))
 income$no_car = (income$Cars==0)+0
 income$one_car = (income$Cars==1)+0
@@ -233,21 +235,104 @@ income$two_car = (income$Cars==2)+0
 income$three_car = (income$Cars>2)+0
 income$more_car = (income$fCars==4)+0
 
-data = subset(income, select = -c(Cars, Dwelling_type, Persons, ED_Primary, ED_Middle, ED_Tech_Voc))
-summary(lm(Income ~ one_per + two_per + four_per + five_per + one_car + two_car + three_car, data=data))
-summary(lm(Income ~ one_per + two_per + four_per + one_car + two_car + three_car + 
-             own_mortgage + free_rent +rental + rental_salary + illegal, data=data))
+summary(lm(Income ~ one_car + two_car + three_car + ED_University + ACT_Working + SCHDL_Fulltime, data=income))
 
-table(income$Persons)
+income$no_uni = (income$ED_University==0)+0
+income$uni = (income$ED_University==1)+0
+income$more_uni = (income$ED_University==2)+0
+income$even_more = (income$ED_University>2)
+
+summary(lm(Income ~ one_car + two_car + three_car + uni + more_uni + even_more + ACT_Working + SCHDL_Fulltime, data=income))
+summary(lm(Income ~ one_car + two_car + three_car + ED_University + ACT_Working + SCHDL_Fulltime, data=income))
+
+income$no_working = (income$ACT_Working==0)+0
+income$working = (income$ACT_Working==1)+0
+income$more_working = (income$ACT_Working>1)+0
+income$even_more_working = (income$ACT_Working>2)+0
+summary(lm(Income ~ one_car + two_car + three_car + ED_University 
+           + no_working + more_working + even_more_working + SCHDL_Fulltime, data=income))
+
+summary(lm(Income ~ one_car + two_car + three_car + ED_University + ACT_Working + SCHDL_Fulltime, data=income))
+
+income$not = (income$SCHDL_Fulltime==0)+0
+income$full = (income$SCHDL_Fulltime==1)+0
+income$more_full = (income$SCHDL_Fulltime>1)+0
+income$even_more_working = (income$SCHDL_Fulltime>2)+0
+summary(lm(Income ~ one_car + two_car + three_car + ED_University 
+           + ACT_Working + not + more_full + even_more_working, data=income))
+
+summary(lm(Income ~ one_car + two_car + three_car + ED_University + ACT_Working + SCHDL_Fulltime, data=income))
+
+income$mortgage = (income$Dwelling_type==1)+0
+income$outright = (income$Dwelling_type==2)+0
+income$rental = (income$Dwelling_type==3)+0
+income$other = (income$Dwelling_type==4 | income$Dwelling_type==6 | income$Dwelling_type==5 | income$Dwelling_type==7 | income$Dwelling_type==3)+0
+income$salary = (income$Dwelling_type==5)+0
+#income$illegal = (income$Dwelling_type==6)+0
+income$other = (income$Dwelling_type==7)+0
+
+summary(lm(Income ~ one_car + two_car + three_car + ED_University + ACT_Working + SCHDL_Fulltime +
+             other + mortgage, data=income))
+
+summary(lm(Income ~ Persons + one_car + two_car + three_car + ED_University + ACT_Working + SCHDL_Fulltime +
+             other + mortgage, data=income))
 income$under_persons = (income$Persons<3)+0
-income$above_persons = (income$Persons>2)+0
+income$above_persons = (income$Persons>2 & income$Persons<8)+0
+income$above_persons = (income$Persons>7)+0
+summary(lm(Income ~ under_persons + above_persons + one_car + two_car + three_car + ED_University + ACT_Working + SCHDL_Fulltime +
+             other + mortgage, data=income))
 
+income$own_bicyle = (income$Bicycles>1)+0
+income$no_bicycle = (income$Bicycles<1)+0
+summary(lm(Income ~ Bicycles + under_persons + above_persons + one_car + two_car + three_car + ED_University + ACT_Working + SCHDL_Fulltime +
+             other + mortgage, data=income))
+
+summary(lm(Income ~ own_bicyle + under_persons + above_persons + one_car + two_car + three_car + ED_University + ACT_Working + SCHDL_Fulltime +
+             other + mortgage, data=income))
+
+summary(lm(Income ~ own_bicyle + under_persons + one_car + two_car + three_car + ED_University + ACT_Working + SCHDL_Fulltime +
+             other + mortgage + ACT_Jobless, data=income))
+
+summary(lm(Income ~ own_bicyle + one_car + two_car + three_car + ED_University + ACT_Working + SCHDL_Fulltime +
+             other + mortgage + ACT_Jobless + ACT_Students, data=income))
+
+income$many_students = (income$ACT_Students>0)+0
+summary(lm(Income ~ own_bicyle + one_car + two_car + three_car + ED_University + ACT_Working + SCHDL_Fulltime +
+              mortgage + ACT_Jobless + many_students, data=income))
+
+summary(lm(Income ~ own_bicyle + one_car + two_car + three_car + ED_University + ACT_Working + SCHDL_Fulltime +
+             mortgage + ACT_Jobless + many_students +
+             ACT_Pensioner, data=income))
+
+summary(lm(Income ~ own_bicyle + one_car + two_car + three_car + ED_University + ACT_Working + SCHDL_Fulltime +
+             mortgage + ACT_Jobless + many_students +
+             ACT_Pensioner + SCHDL_Parttime + Females, data=income))
+
+summary(lm(Income ~ own_bicyle + one_car + two_car + three_car + ED_University + ACT_Working + SCHDL_Fulltime +
+             mortgage + ACT_Jobless + many_students +
+             ACT_Pensioner + SCHDL_Parttime + Females + ED_Primary, data=income))
+model = lm(Income ~ own_bicyle + one_car + two_car + three_car + ED_University + ACT_Working + SCHDL_Fulltime +
+             mortgage + ACT_Jobless + many_students +
+             ACT_Pensioner + SCHDL_Parttime + Females + ED_Primary, data=income)
+
+cookd=cooks.distance(model)
+which(cookd>1)
+
+income$LogIncome = sqrt(income$Income)
+model = lm(Income ~ own_bicyle + one_car + two_car + three_car + ED_University + ACT_Working + SCHDL_Fulltime +
+             mortgage + ACT_Jobless + many_students +
+             ACT_Pensioner + SCHDL_Parttime + Females + ED_Primary, data=income)
+summary(model)
+model_log = lm(LogIncome ~ own_bicyle + one_car + two_car + three_car + ED_University + ACT_Working + SCHDL_Fulltime +
+             mortgage + ACT_Jobless + many_students +
+             ACT_Pensioner + SCHDL_Parttime + Females + ED_Primary, data=income)
+summary(model_log)
 #Model after grouping of number of people in the household
 persons_data = subset(income, select = -c(Persons))
 summary(lm(Income ~ Cars + ACT_Working + ED_University + ED_Tech_Voc + SCHDL_Fulltime +
              SCHDL_Parttime + above_persons + Females + Bicycles, data=persons_data))
 
-#Transforming the variable bicycles into dummie variables
+#Transforming the variable bicycles into dummy variables
 income$own_bicyle = (income$Bicycles>0)+0
 income$no_bicycle = (income$Bicycles<1)+0
 persons_bicycle_data = subset(income, select = -c(Persons, Bicycles))
