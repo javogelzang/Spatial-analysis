@@ -22,6 +22,17 @@ complete.sf[, 15:16] <- lapply(complete.sf[, 15:16], as.numeric)
 #Deal with missing values
 complete.sf = na.omit(complete.sf)
 
+plot(complete$Rooms , complete$Rent)
+
+#Categorizing the rooms variable
+summary(lm(Rent ~ Rooms + Size + center, data=complete))
+complete$one_room <- (complete$Rooms==1)+0 
+complete$two_rooms <- (complete$Rooms>1)+0 
+
+summary(lm(Rent ~ two_rooms + Size + center + Furnished_furnished + Furnished_upholstered +
+             restaurants_dist + Train_dist + woz_waarde +
+             criminal + collected, data=complete))
+
 #Normalizing
 preproc1 <- preProcess(complete[,c(10:16)], method=c('center', 'scale'))
 norm1 <- predict(preproc1, complete[,c(10:16)])
@@ -205,6 +216,9 @@ price.ols = lm(lnRent ~ Size + Rooms + Furnished_furnished + Furnished_upholster
                  criminal + collected, data = complete)
 sm <- summary(price.ols)
 sm
+res=resid(price.ols)
+pre=predict(price.ols)
+plot(res~pre)
 
 #Locating outlier with cooks
 cookd=cooks.distance(price.ols)
@@ -253,6 +267,11 @@ abline(h=0,col="red4",lty=2)
 
 #R-squared of final model
 rfregFit$finalModel$r.squared
+
+res=resid(rfregFit)
+pre=predict(rfregFit)
+plot(res~pre)
+
 
 #Plot the residuals on a map
 tmap_mode("view")
