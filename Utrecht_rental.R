@@ -22,7 +22,7 @@ complete.sf[, 15:16] <- lapply(complete.sf[, 15:16], as.numeric)
 #Deal with missing values
 complete.sf = na.omit(complete.sf)
 
-plot(complete$Rooms , complete$Rent)
+plot(complete.sf$Rooms , complete.sf$Rent)
 
 #Categorizing the rooms variable
 summary(lm(Rent ~ Rooms + Size + center, data=complete))
@@ -211,9 +211,9 @@ tm_shape(complete.sf) + tm_dots(col = "stand.LR_residuals", size = 0.05)
 
 
 #Linear model with only significant variables and high R-squared on log(rent)
-price.ols = lm(lnRent ~ Size + Rooms + Furnished_furnished + Furnished_upholstered +
-                 restaurants_dist + Train_dist + woz_waarde +
-                 criminal + collected, data = complete)
+price.ols = lm(lnRent ~ Size + Rooms + Furnished_ + Furnishe_1 +
+                 restaurant + Train_dist + woz_waarde +
+                 criminal + collected, data = complete.sf)
 sm <- summary(price.ols)
 sm
 res=resid(price.ols)
@@ -228,7 +228,7 @@ which(cookd>1)
 trctrl <- trainControl(method = "none")
 
 #Train random forest model with variables selected by linear regression
-complete.sf = na.omit(complete.sf)
+rentals = na.omit(rentals)
 rfregFit <- train(lnRent ~ Size + restaurant + Furnished_ +
                     Furnishe_1 + restaurant + Train_dist + woz + criminal_v +
                     collected, data = complete.sf, 
@@ -242,8 +242,8 @@ rfregFit <- train(lnRent ~ Size + restaurant + Furnished_ +
 #Train random forest model with full variables and log(Rent)
 rfregFit <- train(lnRent ~ Size + Rooms + Furnished_furnished + Furnished_upholstered +
                     center + schools_dist + park_dist + restaurants_dist + bus_dist + 
-                    Train_dist + woz_waarde + criminal + collected + Latitude + longitude, 
-                  data = complete, 
+                    Train_dist + woz_waarde + criminal, 
+                  data = rentals, 
                   method = "ranger",
                   trControl=trctrl,
                   # calculate importance
@@ -251,7 +251,7 @@ rfregFit <- train(lnRent ~ Size + Rooms + Furnished_furnished + Furnished_uphols
                   tuneGrid = data.frame(mtry=12, min.node.size = 5, splitrule="variance")
 )
 #Plot the Observed vs OOB predicted values from the model
-plot(complete.sf$lnRent,rfregFit$finalModel$predictions,
+plot(rentals$lnRent,rfregFit$finalModel$predictions,
      pch=19,xlab="observed Rent",
      asp=1,
      ylab="OOB predicted Rent")
@@ -259,7 +259,7 @@ mtext(paste("R-squared",
             format(rfregFit$finalModel$r.squared,digits=2)))
 
 #Plot the residuals
-plot(complete.sf$lnRent,(rfregFit$finalModel$predictions-complete$lnRent),
+plot(complete.sf$lnRent,(rfregFit$finalModel$predictions-complete.sf$lnRent),
      pch=18,ylab="residuals (predicted-observed)",
      xlab="observed Rent",col="blue4",
      asp=1)
@@ -274,6 +274,6 @@ plot(res~pre)
 
 #Plot the residuals on a map
 tmap_mode("view")
-complete.sf$RF_residuals = rfregFit$finalModel$predictions-complete$lnRent
+complete.sf$RF_residuals = rfregFit$finalModel$predictions-complete.sf$lnRent
 complete.sf$stand.RF_residuals = as.numeric(scale(complete.sf$RF_residuals)) #<-plotting different prices in different colors
 tm_shape(complete.sf) + tm_dots(col = "stand.RF_residuals", size = 0.05)
