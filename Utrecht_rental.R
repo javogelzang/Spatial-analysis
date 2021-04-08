@@ -272,7 +272,6 @@ res=resid(rfregFit)
 pre=predict(rfregFit)
 plot(res~pre)
 
-
 #Plot the residuals on a map
 tmap_mode("view")
 complete.sf$RF_residuals = rfregFit$finalModel$predictions-complete$lnRent
