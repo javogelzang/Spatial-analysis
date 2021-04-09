@@ -9,20 +9,42 @@ library(quantreg)
 library(FNN)
 
 #Reading the dataset containing the rental properties and venues
-setwd('/Users/jaspervogelzang/Documents/ADS Master/Spatial Statistics/Project/')
+setwd('/Users/jaspervogelzang/Documents/ADS Master/Spatial Statistics/Project/Data/')
 utrecht.sf = read_sf("rental_central.shp", stringsAsFactors = T)
-rentals = read.csv('rental_complete_old.csv')
-rentals = na.omit(rentals)
-complete = read.csv('rentals_complete.csv')
-complete[, 15:16] <- sapply(complete[, 15:16], as.numeric)
 venues.sf = read_sf("utrecht_venues.shp", stringsAsFactors = T)
 complete.sf = read_sf("rentals_complete.shp", stringsAsFactors = T)
-complete.sf[, 15:16] <- lapply(complete.sf[, 15:16], as.numeric)
+complete.sf$woz_waarde <- as.numeric(complete.sf$woz_waarde)
 
 #Deal with missing values
 complete.sf = na.omit(complete.sf)
+complete.sf$geometry = NULL
+complete.sf$Zipcode = NULL
+complete.sf$Neighboorh = NULL
+complete.sf$District = NULL
+complete.sf$woz_waarde = NULL
+complete.sf$criminal = NULL
+complete.sf$longitude = NULL
+complete.sf$Latitude = NULL
+complete.sf$bus_dist = NULL
+complete.sf$park_dist = NULL
+complete.sf$schools_di = NULL
+complete.sf$center = NULL
+complete.sf$Train_dist = NULL
+complete.sf$Rent = NULL
+complete.sf$migration_ = NULL
 
-plot(complete.sf$Rooms , complete.sf$Rent)
+#Run a basic logistic regression model
+summary(lm(Rent ~., data=complete.sf))
+summary(lm(rentsqm ~., data=complete.sf))
+plot(lm(rentsqm ~., data=complete.sf))
+
+#Add row with rent per sqm
+complete.sf$rentsqm = complete.sf$Rent/complete.sf$Size
+summary(lm(rentsqm ~., data=complete.sf))
+
+#Plot the distribution of rentsqm
+hist(complete.sf$rentsqm)
+hist(log(complete.sf$rentsqm))
 
 #Categorizing the rooms variable
 summary(lm(Rent ~ Rooms + Size + center, data=complete))
@@ -60,18 +82,18 @@ complete<- subset(complete, complete$Rent > (Q[1] - 2*iqr) & complete$Rent < (Q[
 
 #Compute logarithms of rent price
 complete.sf$lnRent= log(complete.sf$Rent)
+complete.sf$lnRentSqm = log(complete.sf$rentsqm)
 
 #Plotting the coordinates
 plot(complete.sf$geometry)
 
+#Plot the different rentals by collection moment
+tmap_mode("view")
+tm_shape(complete.sf) + tm_dots(col = "collected", size = 0.05, alpha=0.7, palette='plasma', n=2)
+
 #Plotting the rent data together with maps 
 tmap_mode("view")
-tm_shape(complete.sf) + tm_dots(col = "Rent", size = 0.05)
-
-#Plotting the standardised rent data together with maps 
-tmap_mode("view")
-complete.sf$stand.rent = as.numeric(scale(complete.sf$Rent)) #<-plotting different prices in different colors
-tm_shape(complete.sf) + tm_dots(col = "stand.rent", size = 0.05)
+tm_shape(complete.sf) + tm_dots(col = "rentsqm", size = 0.05, alpha=0.8, style='pretty', n=3, palette='inferno', title='Rent per sqm (€)')
 
 #Plotting the log(rent) data together with maps 
 tmap_mode("view")
@@ -82,7 +104,7 @@ tm_shape(complete.sf) + tm_dots(col = "stand.rent", size = 0.05)
 tmap_mode("view")
 tm_shape(venues.sf) + tm_dots(size = 0.05)
 
-#Plotting train stations in Utrecht
+#Plotting train stations in Utrechtzz``
 tmap_mode("view")
 train.sf = subset(venues.sf, Venue.Cate == 'Train Station')
 tm_shape(train.sf) + tm_dots(size=0.05)
@@ -95,6 +117,14 @@ ggplot(complete.sf, aes(x=Rent))+
 
 #Check the distribution of log(rent)
 ggplot(complete.sf, aes(x=lnRent))+
+  geom_histogram()
+
+#Check the distribution of the rentalsqm
+ggplot(complete.sf, aes(x=rentsqm))+
+  geom_histogram()
+
+#Check the distribution of the log(rentalsqm)
+ggplot(complete.sf, aes(x=lnRentSqm))+
   geom_histogram()
 
 #extrating the coordinates from the dataste
@@ -211,7 +241,7 @@ tm_shape(complete.sf) + tm_dots(col = "stand.LR_residuals", size = 0.05)
 
 
 #Linear model with only significant variables and high R-squared on log(rent)
-price.ols = lm(lnRent ~ Size + Rooms + Furnished_ + Furnishe_1 +
+price.ols = lm(rentsqm ~ Size + Rooms + Furnished_ + Furnishe_1 +
                  restaurant + Train_dist + woz_waarde +
                  criminal + collected, data = complete.sf)
 sm <- summary(price.ols)
