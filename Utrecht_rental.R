@@ -258,10 +258,8 @@ which(cookd>1)
 trctrl <- trainControl(method = "none")
 
 #Train random forest model with variables selected by linear regression
-rentals = na.omit(rentals)
-rfregFit <- train(lnRent ~ Size + restaurant + Furnished_ +
-                    Furnishe_1 + restaurant + Train_dist + woz + criminal_v +
-                    collected, data = complete.sf, 
+rentals = na.omit(complete.sf)
+rfregFit <- train(rentsqm ~ ., data = complete.sf, 
                   method = "ranger",
                   trControl=trctrl,
                     # calculate importance
@@ -281,12 +279,13 @@ rfregFit <- train(lnRent ~ Size + Rooms + Furnished_furnished + Furnished_uphols
                   tuneGrid = data.frame(mtry=12, min.node.size = 5, splitrule="variance")
 )
 #Plot the Observed vs OOB predicted values from the model
-plot(rentals$lnRent,rfregFit$finalModel$predictions,
+plot(complete.sf$rentsqm,rfregFit$finalModel$predictions,
      pch=19,xlab="observed Rent",
      asp=1,
      ylab="OOB predicted Rent")
 mtext(paste("R-squared",
             format(rfregFit$finalModel$r.squared,digits=2)))
+abline(0,1)
 
 #Plot the residuals
 plot(complete.sf$lnRent,(rfregFit$finalModel$predictions-complete.sf$lnRent),
@@ -304,6 +303,6 @@ plot(res~pre)
 
 #Plot the residuals on a map
 tmap_mode("view")
-complete.sf$RF_residuals = rfregFit$finalModel$predictions-complete.sf$lnRent
+complete.sf$RF_residuals = rfregFit$finalModel$predictions-complete.sf$rentsqm
 complete.sf$stand.RF_residuals = as.numeric(scale(complete.sf$RF_residuals)) #<-plotting different prices in different colors
 tm_shape(complete.sf) + tm_dots(col = "stand.RF_residuals", size = 0.05)
