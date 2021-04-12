@@ -7,6 +7,10 @@ library(geosphere)
 library(caret)
 library(quantreg)
 library(FNN)
+library(leaps)
+library(ISLR)
+library(glmnet)
+library(spatialreg)
 
 #Reading the dataset containing the rental properties and venues
 setwd('/Users/jaspervogelzang/Documents/ADS Master/Spatial Statistics/Project/Data/')
@@ -21,75 +25,99 @@ complete.sf$geometry = NULL
 complete.sf$Zipcode = NULL
 complete.sf$Neighboorh = NULL
 complete.sf$District = NULL
-complete.sf$woz_waarde = NULL
-complete.sf$criminal = NULL
-complete.sf$longitude = NULL
-complete.sf$Latitude = NULL
-complete.sf$bus_dist = NULL
-complete.sf$park_dist = NULL
-complete.sf$schools_di = NULL
-complete.sf$center = NULL
-complete.sf$Train_dist = NULL
-complete.sf$Rent = NULL
-complete.sf$migration_ = NULL
-
-#Run a basic logistic regression model
-summary(lm(Rent ~., data=complete.sf))
-summary(lm(rentsqm ~., data=complete.sf))
-plot(lm(rentsqm ~., data=complete.sf))
 
 #Add row with rent per sqm
-complete.sf$rentsqm = complete.sf$Rent/complete.sf$Size
-summary(lm(rentsqm ~., data=complete.sf))
+complete.sf$rentsqm = complete.sf$rent/complete.sf$size
+complete.sf$lnrentsqm = log(complete.sf$rentsqm)
+complete.sf$rent = NULL
+complete.sf$rentsqm = NULL
 
-#Plot the distribution of rentsqm
-hist(complete.sf$rentsqm)
-hist(log(complete.sf$rentsqm))
+hist(complete.sf$rentsqm, xlab='Rent per sqm')
+hist(complete.sf$lnrentsqm, xlab='Logarithmic transformed rent per sqm')
+# #Omits for Linear Models
+#complete.sf$longitude = NULL
+#complete.sf$Latitude = NULL
+# complete.sf$migration_ = NULL
+# complete.sf$schools_di = NULL
+# complete.sf$center = NULL
+# complete.sf$bus_dist = NULL
+# complete.sf$liveabilit = NULL
+# complete.sf$migratio_2 = NULL
+# complete.sf$criminal = NULL
+# complete.sf$restaurant = NULL
+# complete.sf$super_dist = NULL
 
-#Categorizing the rooms variable
-summary(lm(Rent ~ Rooms + Size + center, data=complete))
-complete$one_room <- (complete$Rooms==1)+0 
-complete$two_rooms <- (complete$Rooms>1)+0 
+#Lasso
+x=model.matrix(lnrentsqm~.,complete.sf)[,-1] 
+y=complete.sf$lnrentsqm
+grid=10^seq(10,-2,length=100)
+set.seed (1)
+train=sample(1:nrow(x), nrow(x)/2)
+test=(-train)
+y.test=y[test]
 
-summary(lm(Rent ~ two_rooms + Size + center + Furnished_furnished + Furnished_upholstered +
-             restaurants_dist + Train_dist + woz_waarde +
-             criminal + collected, data=complete))
+lasso.mod=glmnet(x[train ,],y[train],alpha=1,lambda=grid)
+plot(lasso.mod)
 
-#Normalizing
-preproc1 <- preProcess(complete[,c(10:16)], method=c('center', 'scale'))
-norm1 <- predict(preproc1, complete[,c(10:16)])
+set.seed (1)
+cv.out=cv.glmnet(x[train ,],y[train],alpha=1)
+plot(cv.out)
+bestlam=cv.out$lambda.min
+lasso.pred=predict(lasso.mod,s=bestlam ,newx=x[test,])
+mean((lasso.pred-y.test)^2)
 
-normalized = as.data.frame(norm1)
-normalized['Rent'] = complete['Rent']
-normalized['Rooms'] = complete['Rooms']
-normalized['Furnished_furnished'] = complete['Furnished_furnished']
-normalized['Furnished_upholstered'] = complete['Furnished_upholstered']
-normalized['Size'] = complete['Size']
-normalized['center'] = complete['center']
-normalized['collected'] = complete['collected']
+out=glmnet(x,y,alpha=1,lambda=grid)
+lasso.coef=predict(out,type="coefficients",s=bestlam)[1:21,]
+lasso.coef
 
-#Split on new and old dataset
-old = complete[complete$collected == '0',]
-new = complete[complete$collected == '1',]
+#Formula based on lasso regression selected variables
+formula = lnrentsqm ~ size + furnished + collected + park_dist + woz_waarde + traffic + migratio_1 + migratio_2 + Latitude
+LR_model = lm(formula, data=complete.sf)
+sm = summary(LR_model)
+mean(sm$residuals^2)
 
-#Dealing with outliers
-boxplot(complete$Rent)
-Q <- quantile(complete$Rent, probs=c(.25, .75), na.rm = FALSE)
-iqr <- IQR(complete$Rent)
-up <- Q[2]+1.5*iqr
-low <- Q[1]-1.5*iqr
-complete<- subset(complete, complete$Rent > (Q[1] - 2*iqr) & complete$Rent < (Q[2]+2*iqr))
+plot(complete.sf$lnrentsqm,LR_model$fitted.values,
+     pch=19,xlab="observed log(Rent) per sqm",
+     asp=1,
+     pty='s',
+     ylab="predicted log(Rent) per sqm")
+mtext(paste("R-squared",
+            format(sm$r.squared,digits=2)))
+abline(0,1)
 
-#Compute logarithms of rent price
-complete.sf$lnRent= log(complete.sf$Rent)
-complete.sf$lnRentSqm = log(complete.sf$rentsqm)
+complete.sf$residuals = as.numeric(sm$residuals)
+tmap_mode("view")
+tm_shape(complete.sf) + tm_dots(col = "residuals", size = 0.05, alpha=1, palette='PuOr', n=5)
+
+# formula = lnrentsqm ~ size + furnished + collected + park_dist + woz_waarde + traffic + migratio_1 + migratio_2 + Latitude
+# LR_model = glm(formula, data=complete.sf)
+# sm = summary(LR_model)
+# mean(sm$deviance.resid^2)
+# sm$aic
+# LR_model$fitted.values
+
+
+# #Dealing with outliers
+# boxplot(complete.sf$lnrentsqm)
+# Q <- quantile(complete.sf$lnrentsqm, probs=c(.25, .75), na.rm = FALSE)
+# iqr <- IQR(complete.sf$lnrentsqm)
+# up <- Q[2]+1.5*iqr
+# low <- Q[1]-1.5*iqr
+# outliers.sf<- subset(complete.sf, complete.sf$lnrentsqm > (Q[1] - 2*iqr) & complete.sf$lnrentsqm < (Q[2]+2*iqr))
+
+# #Lasso regression selected variables without outliers
+# formula = lnrentsqm ~ size + furnished + collected + park_dist + woz_waarde + traffic + migratio_1 + migratio_2 + Latitude
+# LR_model = lm(formula, lamdbda=grid, data=outliers.sf)
+# sm = summary(LR_model)
+# mean(sm$residuals^2)
+
 
 #Plotting the coordinates
 plot(complete.sf$geometry)
 
 #Plot the different rentals by collection moment
 tmap_mode("view")
-tm_shape(complete.sf) + tm_dots(col = "collected", size = 0.05, alpha=0.7, palette='plasma', n=2)
+tm_shape(complete.sf) + tm_dots(col = "collected", size = 0.05, alpha=0.7, palette='plasma', n=2, title='Date of collection', labels=c('2019', '2021'))
 
 #Plotting the rent data together with maps 
 tmap_mode("view")
@@ -104,7 +132,7 @@ tm_shape(complete.sf) + tm_dots(col = "stand.rent", size = 0.05)
 tmap_mode("view")
 tm_shape(venues.sf) + tm_dots(size = 0.05)
 
-#Plotting train stations in Utrechtzz``
+#Plotting train stations in Utrecht
 tmap_mode("view")
 train.sf = subset(venues.sf, Venue.Cate == 'Train Station')
 tm_shape(train.sf) + tm_dots(size=0.05)
@@ -127,15 +155,16 @@ ggplot(complete.sf, aes(x=rentsqm))+
 ggplot(complete.sf, aes(x=lnRentSqm))+
   geom_histogram()
 
-#extrating the coordinates from the dataste
-utrecht.coords = st_coordinates(complete.sf)
+#Extrating the coordinates from the dataste
+coordinates.sf = read_sf("rentals_complete.shp", stringsAsFactors = T)
+utrecht.coords = st_coordinates(coordinates.sf)
 
 #Coords are in meters
 utrecht.coords
 
 #Defining adjacency W
 #Location is near if less than 500 meters
-utrecht.nb = dnearneigh(utrecht.coords, 0, 250, longlat = FALSE) #defining as adjacent all obs closer than 500
+utrecht.nb = dnearneigh(utrecht.coords, 0, 50, longlat = FALSE) #defining as adjacent all obs closer than 500
 
 #Zero policy at true so that points could have zero near points. 
 utrecht.Wadj = nb2listw(utrecht.nb, style = "W", zero.policy = TRUE) #computing W; style W row normalized; B non-normalized; zero.policy = 1 means that some obs may have no adjacent obs
@@ -180,58 +209,36 @@ expdis[1:5]
 utrecht.Wexpdis = nb2listw(utrecht.nb, glist = expdis, style = "W", zero.policy = TRUE)
 weights(utrecht.Wexpdis)[1:5]
 
-#Estimating LR without correlation (OLS)
-price.ols = lm(lnRent ~ Size + restaurant + Furnished_ +
-                 Furnishe_1 + restaurant + Train_dist + woz + criminal_v +
-                 collected, data = complete.sf)
-summary(price.ols)
-
 #Estimating Spatial Error Model with adjacency W
-price.err_adj = errorsarlm(lnRent ~ Size + restaurant + Furnished_ +
-                             Furnishe_1 + restaurant + Train_dist + woz + criminal_v +
-                             collected, data = complete.sf, listw= utrecht.Wadj, zero.policy = TRUE)
-summary(price.err_adj)
+# price.err_adj = errorsarlm(lnRent ~ Size + restaurant + Furnished_ +
+#                              Furnishe_1 + restaurant + Train_dist + woz + criminal_v +
+#                              collected, data = complete.sf, listw= utrecht.Wadj, zero.policy = TRUE)
+formula = lnrentsqm ~ size + furnished + collected + park_dist + woz_waarde + traffic + migratio_1 + migratio_2
+price.err_adj = errorsarlm(formula = formula, listw=utrecht.Wadj, zero.policy = TRUE, data=complete.sf)
+sm = summary(price.err_adj)
+mean(sm$residuals^2)
+sm$AIC_lm.model
 
 #Estimating Spatial Error Model with distance-based W 1/d
-price.err_ids = errorsarlm(lnRent ~ Size + restaurant + Furnished_ +
-                             Furnishe_1 + restaurant + Train_dist + woz + criminal_v +
-                             collected, data = complete.sf, listw= utrecht.Wids, zero.policy = TRUE)
-summary(price.err_ids)
+formula = lnrentsqm ~ size + furnished + collected + park_dist + woz_waarde + traffic + migratio_1 + migratio_2
+price.err_adj = errorsarlm(formula = formula, listw=utrecht.Wids, zero.policy = TRUE, data=complete.sf)
+sm = summary(price.err_adj)
+mean(sm$residuals^2)
+sm$AIC_lm.model
 
 #Estimating Spatial Error Model with distance-based W 1/d^2
-price.err_ids2 = errorsarlm(lnRent ~ Size + restaurant + Furnished_ +
-                              Furnishe_1 + restaurant + Train_dist + woz + criminal_v +
-                              collected, data = complete.sf, listw= utrecht.Wids2,zero.policy = TRUE)
-summary(price.err_ids2)
-
+formula = lnrentsqm ~ size + furnished + collected + park_dist + woz_waarde + traffic + migratio_1 + migratio_2
+price.err_adj = errorsarlm(formula = formula, listw=utrecht.Wids2, zero.policy = TRUE, data=complete.sf)
+sm = summary(price.err_adj)
+mean(sm$residuals^2)
+sm$AIC_lm.model
 #Estimating Spatial Error Model with distance-based W exp(-x)
-price.err_expdis = errorsarlm(lnRent ~ Size + restaurant + Furnished_ +
-                                Furnishe_1 + restaurant + Train_dist + woz + criminal_v +
-                                collected, data = complete.sf, listw= utrecht.Wexpdis,zero.policy = TRUE)
 summary(price.err_expdis)
-
-#Model with all variables
-price = errorsarlm(lnRent ~ ., data = complete.sf,
-           listw= utrecht.Wadj,zero.policy = TRUE)
-summary(price)
-
-price.err_adj = errorsarlm(Rent ~ Size + restaurants_dist + Furnished_furnished +
-                             Furnished_shell ,data = rentals, listw= utrecht.Wadj,zero.policy = TRUE)
-summary(price.err_adj)
-
-#Linear model with all variables
-price.ols = lm(Rent ~ Size + Rooms + Furnished_furnished + Furnished_upholstered +
-                 center + schools_dist + park_dist + restaurants_dist +  bus_dist + Train_dist + woz_waarde +
-                 criminal + collected, data = complete)
-sm <- summary(price.ols)
-
-
-#Linear model with only significant variables and high R-squared
-price.ols = lm(lnRent ~ Size + restaurant + Furnished_ +
-                 Furnishe_1 + restaurant + Train_dist + woz + criminal_v +
-                 collected, data = complete.sf,)
-sm <- summary(price.ols)
-sm
+formula = lnrentsqm ~ size + furnished + collected + park_dist + woz_waarde + traffic + migratio_1 + migratio_2
+price.err_adj = errorsarlm(formula = formula, listw=utrecht.Wexpdis, zero.policy = TRUE, data=complete.sf)
+sm = summary(price.err_adj)
+mean(sm$residuals^2)
+sm$AIC_lm.model
 
 #Plot the residuals on a map
 tmap_mode("view")
@@ -254,12 +261,14 @@ plot(res~pre)
 cookd=cooks.distance(price.ols)
 which(cookd>1)
 
+#####RandomForest####
+
 #Performing Random Forest Regression
 trctrl <- trainControl(method = "none")
 
 #Train random forest model with variables selected by linear regression
 rentals = na.omit(complete.sf)
-rfregFit <- train(rentsqm ~ ., data = complete.sf, 
+rfregFit <- train(lnrentsqm ~ ., data = complete.sf, 
                   method = "ranger",
                   trControl=trctrl,
                     # calculate importance
@@ -268,21 +277,20 @@ rfregFit <- train(rentsqm ~ ., data = complete.sf,
 )
 
 #Train random forest model with full variables and log(Rent)
-rfregFit <- train(lnRent ~ Size + Rooms + Furnished_furnished + Furnished_upholstered +
-                    center + schools_dist + park_dist + restaurants_dist + bus_dist + 
-                    Train_dist + woz_waarde + criminal, 
-                  data = rentals, 
+rfregFit <- train(lnrentsqm ~ ., 
+                  data = complete.sf, 
                   method = "ranger",
                   trControl=trctrl,
                   # calculate importance
                   importance="permutation", 
                   tuneGrid = data.frame(mtry=12, min.node.size = 5, splitrule="variance")
 )
+rfregFit$finalModel$r.squared
 #Plot the Observed vs OOB predicted values from the model
-plot(complete.sf$rentsqm,rfregFit$finalModel$predictions,
-     pch=19,xlab="observed Rent",
+plot(complete.sf$lnrentsqm,rfregFit$finalModel$predictions,
+     pch=19,xlab="observed log(Rent) per sqm",
      asp=1,
-     ylab="OOB predicted Rent")
+     ylab="OOB predicted log(Rent) per sqm")
 mtext(paste("R-squared",
             format(rfregFit$finalModel$r.squared,digits=2)))
 abline(0,1)
@@ -291,7 +299,8 @@ abline(0,1)
 plot(complete.sf$lnRent,(rfregFit$finalModel$predictions-complete.sf$lnRent),
      pch=18,ylab="residuals (predicted-observed)",
      xlab="observed Rent",col="blue4",
-     asp=1)
+     asp=1,
+     )
 abline(h=0,col="red4",lty=2)
 
 #R-squared of final model
@@ -306,3 +315,80 @@ tmap_mode("view")
 complete.sf$RF_residuals = rfregFit$finalModel$predictions-complete.sf$rentsqm
 complete.sf$stand.RF_residuals = as.numeric(scale(complete.sf$RF_residuals)) #<-plotting different prices in different colors
 tm_shape(complete.sf) + tm_dots(col = "stand.RF_residuals", size = 0.05)
+
+Boston = complete.sf
+set.seed(1)
+train = sample (1:nrow(Boston), nrow(Boston)/2)
+
+#########################################################bagging########################################
+bag.boston= randomForest(lnrentsqm~.,data=Boston , subset=train ,
+                         mtry=13,importance =TRUE) ##### m = p=Baging since mtry=13
+bag.boston
+
+###############test set perfomace basedon the model above
+yhat.bag = predict (bag.boston , newdata=Boston[-train ,])
+boston.test = Boston[-train,"lnrentsqm"]
+
+boston.test = as.data.frame(boston.test[,1])
+boston.test = boston.test[,1]
+plot(yhat.bag , boston.test)
+abline (0,1)
+
+mean((yhat.bag-boston.test)^2)###calculate MSE
+
+###change the number of trees grown by randomForest()
+bag.boston= randomForest(lnrentsqm~.,data=Boston , subset=train ,
+                         mtry=13,ntree=25)#ntree=25
+yhat.bag = predict (bag.boston , newdata=Boston[-train ,])
+mean((yhat.bag -boston.test)^2)
+
+##############################################Random Forest###############################################
+##By default, randomForest() uses p/3 variables for regression trees & ???p variables for classification trees
+
+set.seed(1)
+rf.boston= randomForest(lnrentsqm~.,data=Boston , subset=train ,
+                        mtry=8, importance =TRUE)###mytry=6
+yhat.rf = predict(rf.boston ,newdata=Boston[-train ,])
+mean((yhat.rf-boston.test)^2)
+
+###########important variables#######
+importance (rf.boston) #### %IncMSE: mean decrease of accuracy in predictions on the out of bag samples
+#                                    when a given variable is excluded from the model
+#                          IncNodePurity: total decrease in node impurity that results from splits over that
+#                                          variable, averaged over all tree (in regresion treesbased on training RSS)
+
+varImpPlot(rf.boston)##plot
+plot(rf.boston$mtry)
+yhat.rf
+
+##########################################Boostig#############################################################################3
+
+library (gbm)
+
+set.seed(1)
+boost.boston1=gbm( lnrentsqm~.,data=Boston[train ,], distribution="gaussian",
+                   n.trees=5000, interaction.depth=4)###distribution="gaussian" since this is a regression problem
+summary(boost.boston1)
+
+#####partial dependence plots based on marginal effect of the selected variables on the response after
+#                                                                integrating out the other variables
+par(mfrow=c(1,2))
+plot(rf.boston, i='liveabilit')
+plot(boost.boston1,i="liveabilit")
+plot(boost.boston1,i="migratio_2")
+
+######use the boosted model to predict medv on the test set
+yhat.boost1=predict (boost.boston1 ,newdata =Boston[-train ,],## default shrinkage parameter ??= 0.001 
+                     n.trees=5000)
+mean((yhat.boost1 - boston.test)^2)
+
+####change ??
+boost.boston2=gbm( lnrentsqm~.,data=Boston[train ,], distribution=
+                     "gaussian",n.trees =1000, interaction.depth =4, shrinkage =0.1,
+                   verbose=F)
+yhat.boost2=predict (boost.boston2 ,newdata =Boston[-train ,],
+                     n.trees=1000)
+mean((yhat.boost2 - boston.test)^2)
+summary(boost.boston2)
+
+
