@@ -87,7 +87,7 @@ abline(0,1)
 
 complete.sf$residuals = as.numeric(sm$residuals)
 tmap_mode("view")
-tm_shape(complete.sf) + tm_dots(col = "residuals", size = 0.05, alpha=1, palette='PuOr', n=5)
+tm_shape(complete.sf) + tm_dots(col = "residuals", size = 0.05, alpha=1, palette='PuOr', n=10)
 
 # formula = lnrentsqm ~ size + furnished + collected + park_dist + woz_waarde + traffic + migratio_1 + migratio_2 + Latitude
 # LR_model = glm(formula, data=complete.sf)
@@ -361,6 +361,8 @@ varImpPlot(rf.boston)##plot
 plot(rf.boston$mtry)
 yhat.rf
 
+tmap_mode("view")
+tm_shape(complete.sf) + tm_dots(col = "residuals", size = 0.05, alpha=1, palette='PuOr', n=10)
 ##########################################Boostig#############################################################################3
 
 library (gbm)
