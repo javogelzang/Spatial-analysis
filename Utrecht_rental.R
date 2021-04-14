@@ -47,6 +47,8 @@ hist(complete.sf$lnrentsqm, xlab='Logarithmic transformed rent per sqm')
 # complete.sf$restaurant = NULL
 # complete.sf$super_dist = NULL
 
+#Normalizing 
+
 #Lasso
 x=model.matrix(lnrentsqm~.,complete.sf)[,-1] 
 y=complete.sf$lnrentsqm
