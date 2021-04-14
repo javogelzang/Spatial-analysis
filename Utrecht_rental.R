@@ -17,7 +17,6 @@ setwd('/Users/jaspervogelzang/Documents/ADS Master/Spatial Statistics/Project/Da
 utrecht.sf = read_sf("rental_central.shp", stringsAsFactors = T)
 venues.sf = read_sf("utrecht_venues.shp", stringsAsFactors = T)
 complete.sf = read_sf("rentals_complete.shp", stringsAsFactors = T)
-complete.sf$woz_waarde <- as.numeric(complete.sf$woz_waarde)
 
 #Deal with missing values
 complete.sf = na.omit(complete.sf)
@@ -26,30 +25,17 @@ complete.sf$Zipcode = NULL
 complete.sf$Neighboorh = NULL
 complete.sf$District = NULL
 
-#Add row with rent per sqm
-complete.sf$rentsqm = complete.sf$rent/complete.sf$size
-complete.sf$lnrentsqm = log(complete.sf$rentsqm)
+#Calculate the rent per sqm
+rentsqm = complete.sf$rent/complete.sf$size
+lnrentsqm = log(rentsqm)
 complete.sf$rent = NULL
-complete.sf$rentsqm = NULL
 
-hist(complete.sf$rentsqm, xlab='Rent per sqm')
-hist(complete.sf$lnrentsqm, xlab='Logarithmic transformed rent per sqm')
-# #Omits for Linear Models
-#complete.sf$longitude = NULL
-#complete.sf$Latitude = NULL
-# complete.sf$migration_ = NULL
-# complete.sf$schools_di = NULL
-# complete.sf$center = NULL
-# complete.sf$bus_dist = NULL
-# complete.sf$liveabilit = NULL
-# complete.sf$migratio_2 = NULL
-# complete.sf$criminal = NULL
-# complete.sf$restaurant = NULL
-# complete.sf$super_dist = NULL
+#Standardizing independent variables
+complete.sf = scale(complete.sf)
+complete.sf = cbind(lnrentsqm, complete.sf)
+complete.sf = as.data.frame(complete.sf)
 
-#Normalizing 
-
-#Lasso
+#Performing Lasso for variable selection
 x=model.matrix(lnrentsqm~.,complete.sf)[,-1] 
 y=complete.sf$lnrentsqm
 grid=10^seq(10,-2,length=100)
@@ -66,31 +52,63 @@ cv.out=cv.glmnet(x[train ,],y[train],alpha=1)
 plot(cv.out)
 bestlam=cv.out$lambda.min
 lasso.pred=predict(lasso.mod,s=bestlam ,newx=x[test,])
+
+#MSE on lasso
 mean((lasso.pred-y.test)^2)
 
+#Calculate coefficients 
 out=glmnet(x,y,alpha=1,lambda=grid)
 lasso.coef=predict(out,type="coefficients",s=bestlam)[1:21,]
 lasso.coef
+
+#Check for multicollinearity
+correlation = cor(complete.sf)
+View(correlation)
+which(correlation>0.5 & correlation<1)
 
 #Formula based on lasso regression selected variables
 formula = lnrentsqm ~ size + furnished + collected + park_dist + woz_waarde + traffic + migratio_1 + migratio_2 + Latitude
 LR_model = lm(formula, data=complete.sf)
 sm = summary(LR_model)
 mean(sm$residuals^2)
+sm$r.squared
 
 plot(complete.sf$lnrentsqm,LR_model$fitted.values,
      pch=19,xlab="observed log(Rent) per sqm",
      asp=1,
      pty='s',
-     ylab="predicted log(Rent) per sqm")
+     cex=0.3,
+     ylab="predicted log(Rent) per sqm",
+     xlim=c(1,4.5),
+     ylim=c(2,4.5))
 mtext(paste("R-squared",
             format(sm$r.squared,digits=2)))
 abline(0,1)
 
-complete.sf$residuals = as.numeric(sm$residuals)
+#Plot the residuals
+coor.sf = read_sf("rentals_complete.shp", stringsAsFactors = T)
+residuals = as.numeric(sm$residuals)
+coor.sf$residuals = residuals
 tmap_mode("view")
-tm_shape(complete.sf) + tm_dots(col = "residuals", size = 0.05, alpha=1, palette='PuOr', n=10)
+tm_shape(coor.sf) + tm_dots(col = "residuals", size = 0.05, alpha=1, palette='PuOr', n=7) + 
+  tm_scale_bar() + tm_compass()
 
+#Plot the residuals
+venues_plot.sf = read_sf("venues_plot.shp", stringsAsFactors = T)
+tmap_mode("view")
+tm_shape(venues_plot.sf) + tm_dots(col = "Venue_1", size = 0.05, alpha=1, title='Venue type') + tm_scale_bar()
+
+venues_plot.sf = read_sf("venues_all.shp", stringsAsFactors = T)
+tmap_mode("view")
+tm_shape(venues_plot.sf) + tm_dots(col = "Venue2", size = 0.05, alpha=1, title='Venue type') + tm_scale_bar()
+
+residual_plot.sf = read_sf("residual_plot.shp", stringsAsFactors = T)
+tmap_mode("view")
+tm_shape(venues_plot.sf) + tm_dots(col = "RandomFore", size = 0.05, alpha=1, palette='PuOr', n=7) + tm_scale_bar()
+
+residual_plot.sf = read_sf("residual_plot.shp", stringsAsFactors = T)
+tmap_mode("view")
+tm_shape(venues_plot.sf) + tm_dots(col = "LinearRegr", size = 0.05, alpha=1, title='Venue type') + tm_scale_bar()
 # formula = lnrentsqm ~ size + furnished + collected + park_dist + woz_waarde + traffic + migratio_1 + migratio_2 + Latitude
 # LR_model = glm(formula, data=complete.sf)
 # sm = summary(LR_model)
@@ -292,6 +310,9 @@ rfregFit$finalModel$r.squared
 plot(complete.sf$lnrentsqm,rfregFit$finalModel$predictions,
      pch=19,xlab="observed log(Rent) per sqm",
      asp=1,
+     cex=0.3,
+     xlim=c(1,4.5),
+     ylim=c(2,4.5),
      ylab="OOB predicted log(Rent) per sqm")
 mtext(paste("R-squared",
             format(rfregFit$finalModel$r.squared,digits=2)))
@@ -313,8 +334,8 @@ pre=predict(rfregFit)
 plot(res~pre)
 
 #Plot the residuals on a map
-tmap_mode("view")
-complete.sf$RF_residuals = rfregFit$finalModel$predictions-complete.sf$rentsqm
+data = as.data.frame(as.numeric(rfregFit$finalModel$predictions-complete.sf$lnrentsqm))
+data$residuals = as.numeric(sm$residuals)
 complete.sf$stand.RF_residuals = as.numeric(scale(complete.sf$RF_residuals)) #<-plotting different prices in different colors
 tm_shape(complete.sf) + tm_dots(col = "stand.RF_residuals", size = 0.05)
 
