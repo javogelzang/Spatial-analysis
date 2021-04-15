@@ -90,7 +90,7 @@ coor.sf = read_sf("rentals_complete.shp", stringsAsFactors = T)
 residuals = as.numeric(sm$residuals)
 coor.sf$residuals = residuals
 tmap_mode("view")
-tm_shape(coor.sf) + tm_dots(col = "residuals", size = 0.05, alpha=1, palette='PuOr', n=7) + 
+tm_shape(coor.sf) + tm_dots(col = "residuals", size = 0.05, alpha=1, palette='RdYlBu', n=7) + 
   tm_scale_bar() + tm_compass()
 
 #Plot the residuals
@@ -100,15 +100,15 @@ tm_shape(venues_plot.sf) + tm_dots(col = "Venue_1", size = 0.05, alpha=1, title=
 
 venues_plot.sf = read_sf("venues_all.shp", stringsAsFactors = T)
 tmap_mode("view")
-tm_shape(venues_plot.sf) + tm_dots(col = "Venue2", size = 0.03, alpha=1, title='Venue type', palette='Dark2') + tm_scale_bar()
+tm_shape(venues_plot.sf) + tm_dots(col = "Venue2", size = 0.05, alpha=1, title='Venue type', palette='Dark2') + tm_scale_bar()
 
 residual_plot.sf = read_sf("residual_plot.shp", stringsAsFactors = T)
 tmap_mode("view")
-tm_shape(venues_plot.sf) + tm_dots(col = "RandomFore", size = 0.05, alpha=1, palette='PuOr', n=7) + tm_scale_bar()
+tm_shape(residual_plot.sf) + tm_dots(col = "RandomFore", size = 0.05, alpha=1, palette='PuOr', n=7) + tm_scale_bar()
 
 residual_plot.sf = read_sf("residual_plot.shp", stringsAsFactors = T)
 tmap_mode("view")
-tm_shape(venues_plot.sf) + tm_dots(col = "LinearRegr", size = 0.05, alpha=1, title='Venue type') + tm_scale_bar()
+tm_shape(residual_plot.sf) + tm_dots(col = "LinearRegr", size = 0.05, alpha=1, title='Venue type', palette='RdYlBu') + tm_scale_bar()
 # formula = lnrentsqm ~ size + furnished + collected + park_dist + woz_waarde + traffic + migratio_1 + migratio_2 + Latitude
 # LR_model = glm(formula, data=complete.sf)
 # sm = summary(LR_model)
@@ -336,7 +336,7 @@ plot(res~pre)
 #Plot the residuals on a map
 data = as.data.frame(as.numeric(rfregFit$finalModel$predictions-complete.sf$lnrentsqm))
 data$residuals = as.numeric(sm$residuals)
-complete.sf$stand.RF_residuals = as.numeric(scale(complete.sf$RF_residuals)) #<-plotting different prices in different colors
+complete.sf$stand.RF_residuals = as.numeric(scale(data$residuals)) #<-plotting different prices in different colors
 tm_shape(complete.sf) + tm_dots(col = "stand.RF_residuals", size = 0.05)
 
 Boston = complete.sf
@@ -399,8 +399,8 @@ summary(boost.boston1)
 #                                                                integrating out the other variables
 par(mfrow=c(1,2))
 plot(rf.boston, i='liveabilit')
-plot(boost.boston1,i="liveabilit")
-plot(boost.boston1,i="migratio_2")
+plot(rf.boston,i="liveabilit")
+plot(boost.boston1,i="Latitude")
 
 ######use the boosted model to predict medv on the test set
 yhat.boost1=predict (boost.boston1 ,newdata =Boston[-train ,],## default shrinkage parameter ??= 0.001 
