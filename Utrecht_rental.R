@@ -100,7 +100,7 @@ tm_shape(venues_plot.sf) + tm_dots(col = "Venue_1", size = 0.05, alpha=1, title=
 
 venues_plot.sf = read_sf("venues_all.shp", stringsAsFactors = T)
 tmap_mode("view")
-tm_shape(venues_plot.sf) + tm_dots(col = "Venue2", size = 0.05, alpha=1, title='Venue type') + tm_scale_bar()
+tm_shape(venues_plot.sf) + tm_dots(col = "Venue2", size = 0.03, alpha=1, title='Venue type', palette='Dark2') + tm_scale_bar()
 
 residual_plot.sf = read_sf("residual_plot.shp", stringsAsFactors = T)
 tmap_mode("view")
