@@ -63,6 +63,7 @@ lasso.pred=predict(lasso.mod,s=bestlam ,newx=x[test,])
 #MSE on lasso
 mean((lasso.pred-y.test)^2)
 
+
 #Calculate coefficients 
 out=glmnet(x,y,alpha=1,lambda=grid)
 lasso.coef=predict(out,type="coefficients",s=bestlam)[1:21,]
