@@ -157,11 +157,12 @@ tm_shape(complete.sf) + tm_dots(col = "collected", size = 0.05, alpha=0.7, palet
 tmap_mode("view")
 tm_shape(complete.sf) + tm_dots(col = "rentsqm", size = 0.05, alpha=0.8, style='pretty', n=3, palette='inferno', title='Rent per sqm (€)')
 
-#Plot the residuals
+#Plot the residuals RF
 residual_plot.sf = read_sf("residual_rf.shp", stringsAsFactors = T)
 tmap_mode("view")
 tm_shape(residual_plot.sf) + tm_dots(col = "rf", size = 0.05, alpha=1, title='residuals', palette='RdYlBu') + tm_scale_bar()
 
+#Plot the residuals LR
 residual_plot.sf = read_sf("residual_plot.shp", stringsAsFactors = T)
 tmap_mode("view")
 tm_shape(residual_plot.sf) + tm_dots(col = "LinearRegr", size = 0.05, alpha=1, title='residuals', palette='RdYlBu') + tm_scale_bar()
